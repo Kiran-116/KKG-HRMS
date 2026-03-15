@@ -1,0 +1,52 @@
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Uploads
+uploads/
+backend/uploads/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Test coverage
+coverage/
+*.out
+
+# Temporary files
+tmp/
+temp/
+*.tmp
