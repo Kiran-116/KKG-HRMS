@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { documentService, Document } from '../../services/documentService';
 
 const DocumentListPage: React.FC = () => {
@@ -26,9 +27,10 @@ const DocumentListPage: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this document?')) return;
     try {
       await documentService.delete(id);
+      toast.success('Document deleted successfully!');
       loadDocuments();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to delete document');
+      toast.error(error.response?.data?.message || 'Failed to delete document');
     }
   };
 

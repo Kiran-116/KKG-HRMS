@@ -13,7 +13,9 @@ const Sidebar: React.FC = () => {
     ...(isAdmin
       ? [
           { path: '/employees', label: 'Employees', icon: '👥' },
-          { path: '/attendance', label: 'Attendance', icon: '⏰' },
+          { path: '/attendance', label: 'All Attendance', icon: '⏰' },
+          { path: '/attendance/checkin', label: 'Check In/Out', icon: '✅' },
+          { path: '/attendance/history', label: 'My Attendance', icon: '📊' },
           { path: '/leaves', label: 'Leaves', icon: '📅' },
           { path: '/payroll', label: 'Payroll', icon: '💰' },
           { path: '/audit-logs', label: 'Audit Logs', icon: '📝' },

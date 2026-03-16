@@ -3,6 +3,7 @@ import api from './api';
 export interface Attendance {
   id: string;
   user_id: string;
+  user_name?: string;
   date: string;
   check_in?: string;
   check_out?: string;

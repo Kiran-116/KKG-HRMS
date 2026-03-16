@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardService, EmployeeDashboard } from '../../services/dashboardService';
 import StatCard from '../../components/dashboard/StatCard';
+import AttendancePieChart from '../../components/dashboard/AttendancePieChart';
+import AttendanceChart from '../../components/dashboard/AttendanceChart';
 
 const EmployeeDashboardPage: React.FC = () => {
   const [dashboard, setDashboard] = useState<EmployeeDashboard | null>(null);
@@ -61,6 +63,25 @@ const EmployeeDashboardPage: React.FC = () => {
           icon="🔔"
           color="yellow"
         />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Attendance Overview (This Month)</h2>
+          {dashboard.attendance_summary ? (
+            <AttendancePieChart 
+              present={dashboard.attendance_summary.present_days}
+              absent={dashboard.attendance_summary.absent_days}
+            />
+          ) : (
+            <p className="text-sm text-gray-500">No attendance data available</p>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Attendance Trend (Last 7 Days)</h2>
+          <AttendanceChart data={dashboard.attendance_trend || []} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

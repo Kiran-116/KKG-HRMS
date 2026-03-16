@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { attendanceService, Attendance } from '../../services/attendanceService';
+import { formatTimeIST, formatDateIST } from '../../utils/timeUtils';
 
 const AdminAttendanceViewPage: React.FC = () => {
   const [attendances, setAttendances] = useState<Attendance[]>([]);
@@ -80,7 +81,7 @@ const AdminAttendanceViewPage: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check In</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check Out</th>
@@ -90,15 +91,17 @@ const AdminAttendanceViewPage: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {attendances?.map((attendance) => (
               <tr key={attendance.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendance.user_id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(attendance.date).toLocaleDateString()}
+                  {attendance.user_name || attendance.user_id}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {formatDateIST(attendance.date)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {attendance.check_in ? new Date(attendance.check_in).toLocaleTimeString() : '-'}
+                  {attendance.check_in ? formatTimeIST(attendance.check_in) + ' IST' : '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {attendance.check_out ? new Date(attendance.check_out).toLocaleTimeString() : '-'}
+                  {attendance.check_out ? formatTimeIST(attendance.check_out) + ' IST' : '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(attendance.status)}`}>

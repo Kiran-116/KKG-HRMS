@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { attendanceService, Attendance } from '../../services/attendanceService';
+import { formatTimeIST, formatDateIST } from '../../utils/timeUtils';
 
 const AttendanceHistoryPage: React.FC = () => {
   const [attendances, setAttendances] = useState<Attendance[]>([]);
@@ -58,13 +59,13 @@ const AttendanceHistoryPage: React.FC = () => {
             {attendances.map((attendance) => (
               <tr key={attendance.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(attendance.date).toLocaleDateString()}
+                  {formatDateIST(attendance.date)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {attendance.check_in ? new Date(attendance.check_in).toLocaleTimeString() : '-'}
+                  {attendance.check_in ? formatTimeIST(attendance.check_in) + ' IST' : '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {attendance.check_out ? new Date(attendance.check_out).toLocaleTimeString() : '-'}
+                  {attendance.check_out ? formatTimeIST(attendance.check_out) + ' IST' : '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(attendance.status)}`}>

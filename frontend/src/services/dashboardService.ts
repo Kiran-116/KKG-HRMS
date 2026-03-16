@@ -15,6 +15,16 @@ export interface AdminDashboard {
     year: number;
     total: number;
   } | null;
+  attendance_trend?: Array<{
+    date: string;
+    present: number;
+    absent: number;
+  }>;
+  payroll_trend?: Array<{
+    month: number;
+    year: number;
+    total: number;
+  }>;
 }
 
 export interface EmployeeDashboard {
@@ -37,6 +47,10 @@ export interface EmployeeDashboard {
   } | null;
   upcoming_holidays?: any[];
   unread_notifications: number;
+  attendance_trend?: Array<{
+    date: string;
+    present: number;
+  }>;
 }
 
 export const dashboardService = {

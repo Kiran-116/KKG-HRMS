@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -25,6 +26,7 @@ import AdminLeaveApproval from './pages/leaves/AdminLeaveApproval';
 
 // Payroll
 import SalaryHistory from './pages/payroll/SalaryHistory';
+import AdminPayroll from './pages/payroll/AdminPayroll';
 
 // Documents
 import DocumentList from './pages/documents/DocumentList';
@@ -148,6 +150,14 @@ function App() {
 
             {/* Payroll */}
             <Route
+              path="payroll"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPayroll />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="salary/me"
               element={
                 <ProtectedRoute>
@@ -211,6 +221,18 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </AuthProvider>
   );
 }

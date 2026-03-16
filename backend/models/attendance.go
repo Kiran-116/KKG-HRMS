@@ -9,6 +9,7 @@ import (
 type Attendance struct {
 	ID        uuid.UUID  `json:"id"`
 	UserID    uuid.UUID  `json:"user_id"`
+	UserName  *string    `json:"user_name,omitempty"` // Optional, populated when joining with users table
 	Date      time.Time  `json:"date"`
 	CheckIn   *time.Time `json:"check_in,omitempty"`
 	CheckOut  *time.Time `json:"check_out,omitempty"`

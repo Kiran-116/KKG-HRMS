@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { leaveService, Leave } from '../../services/leaveService';
 
 const AdminLeaveApprovalPage: React.FC = () => {
@@ -26,9 +27,10 @@ const AdminLeaveApprovalPage: React.FC = () => {
     if (!window.confirm('Approve this leave request?')) return;
     try {
       await leaveService.approve(id);
+      toast.success('Leave request approved successfully!');
       loadLeaves();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to approve leave');
+      toast.error(error.response?.data?.message || 'Failed to approve leave');
     }
   };
 
@@ -36,9 +38,10 @@ const AdminLeaveApprovalPage: React.FC = () => {
     if (!window.confirm('Reject this leave request?')) return;
     try {
       await leaveService.reject(id);
+      toast.success('Leave request rejected');
       loadLeaves();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to reject leave');
+      toast.error(error.response?.data?.message || 'Failed to reject leave');
     }
   };
 

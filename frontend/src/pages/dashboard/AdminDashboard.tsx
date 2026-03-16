@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardService, AdminDashboard } from '../../services/dashboardService';
 import StatCard from '../../components/dashboard/StatCard';
+import AttendanceChart from '../../components/dashboard/AttendanceChart';
+import PayrollChart from '../../components/dashboard/PayrollChart';
 
 const AdminDashboardPage: React.FC = () => {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
@@ -61,6 +63,18 @@ const AdminDashboardPage: React.FC = () => {
           icon="📅"
           color="yellow"
         />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Attendance Trend (Last 30 Days)</h2>
+          <AttendanceChart data={dashboard.attendance_trend || []} />
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Monthly Payroll Trend</h2>
+          <PayrollChart data={dashboard.payroll_trend || []} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

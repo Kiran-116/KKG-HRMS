@@ -88,6 +88,61 @@ func (s *dashboardService) GetAdminDashboard() (map[string]interface{}, error) {
 		"total": payrollTotal,
 	}
 
+	// Attendance trend (last 30 days)
+	attendanceTrendRows, _ := s.db.Query(`
+		SELECT date, 
+		       COUNT(*) FILTER (WHERE status IN ('present', 'late', 'half_day')) as present,
+		       COUNT(*) FILTER (WHERE status = 'absent') as absent
+		FROM attendance
+		WHERE date >= CURRENT_DATE - INTERVAL '30 days'
+		GROUP BY date
+		ORDER BY date ASC
+	`)
+	defer attendanceTrendRows.Close()
+	
+	var attendanceTrend []map[string]interface{}
+	for attendanceTrendRows.Next() {
+		var date time.Time
+		var present, absent int
+		attendanceTrendRows.Scan(&date, &present, &absent)
+		attendanceTrend = append(attendanceTrend, map[string]interface{}{
+			"date":    date.Format("2006-01-02"),
+			"present": present,
+			"absent":  absent,
+		})
+	}
+	result["attendance_trend"] = attendanceTrend
+
+	// Monthly payroll (last 6 months)
+	startMonth := currentMonth - 5
+	startYear := currentYear
+	if startMonth <= 0 {
+		startMonth += 12
+		startYear--
+	}
+	payrollTrendRows, _ := s.db.Query(`
+		SELECT month, year, COALESCE(SUM(net_salary), 0) as total
+		FROM salaries
+		WHERE (year = $1 AND month >= $2) OR (year = $3 AND month <= $4)
+		GROUP BY month, year
+		ORDER BY year ASC, month ASC
+		LIMIT 6
+	`, currentYear, startMonth, startYear, currentMonth)
+	defer payrollTrendRows.Close()
+	
+	var payrollTrend []map[string]interface{}
+	for payrollTrendRows.Next() {
+		var month, year int
+		var total float64
+		payrollTrendRows.Scan(&month, &year, &total)
+		payrollTrend = append(payrollTrend, map[string]interface{}{
+			"month": month,
+			"year":  year,
+			"total": total,
+		})
+	}
+	result["payroll_trend"] = payrollTrend
+
 	return result, nil
 }
 
@@ -156,6 +211,28 @@ func (s *dashboardService) GetEmployeeDashboard(userID uuid.UUID) (map[string]in
 		WHERE user_id = $1 AND is_read = false
 	`, userID).Scan(&unreadCount)
 	result["unread_notifications"] = unreadCount
+
+	// Attendance trend (last 7 days)
+	attendanceTrendRows, _ := s.db.Query(`
+		SELECT date, 
+		       CASE WHEN status IN ('present', 'late', 'half_day') THEN 1 ELSE 0 END as present
+		FROM attendance
+		WHERE user_id = $1 AND date >= CURRENT_DATE - INTERVAL '7 days'
+		ORDER BY date ASC
+	`, userID)
+	defer attendanceTrendRows.Close()
+	
+	var attendanceTrend []map[string]interface{}
+	for attendanceTrendRows.Next() {
+		var date time.Time
+		var present int
+		attendanceTrendRows.Scan(&date, &present)
+		attendanceTrend = append(attendanceTrend, map[string]interface{}{
+			"date":    date.Format("2006-01-02"),
+			"present": present,
+		})
+	}
+	result["attendance_trend"] = attendanceTrend
 
 	return result, nil
 }

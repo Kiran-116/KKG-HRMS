@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { documentService } from '../../services/documentService';
 
 const DocumentUploadPage: React.FC = () => {
@@ -17,17 +18,17 @@ const DocumentUploadPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !documentType) {
-      alert('Please select a file and document type');
+      toast.warning('Please select a file and document type');
       return;
     }
 
     setLoading(true);
     try {
       await documentService.upload(file, documentType);
-      alert('Document uploaded successfully!');
+      toast.success('Document uploaded successfully!');
       navigate('/documents');
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to upload document');
+      toast.error(error.response?.data?.message || 'Failed to upload document');
     } finally {
       setLoading(false);
     }

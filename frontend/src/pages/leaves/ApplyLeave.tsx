@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { leaveService, ApplyLeaveRequest } from '../../services/leaveService';
 
 const ApplyLeavePage: React.FC = () => {
@@ -23,10 +24,10 @@ const ApplyLeavePage: React.FC = () => {
     setLoading(true);
     try {
       await leaveService.apply(formData);
-      alert('Leave application submitted successfully!');
+      toast.success('Leave application submitted successfully!');
       navigate('/leaves/me');
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to apply for leave');
+      toast.error(error.response?.data?.message || 'Failed to apply for leave');
     } finally {
       setLoading(false);
     }

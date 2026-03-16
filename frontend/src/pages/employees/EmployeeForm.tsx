@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { employeeService, CreateEmployeeRequest, UpdateEmployeeRequest } from '../../services/employeeService';
 
 const EmployeeFormPage: React.FC = () => {
@@ -29,7 +30,7 @@ const EmployeeFormPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id && formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -46,6 +47,7 @@ const EmployeeFormPage: React.FC = () => {
           salary: formData.salary,
         };
         await employeeService.update(id, updateData);
+        toast.success('Employee updated successfully!');
       } else {
         const createData: CreateEmployeeRequest = {
           name: formData.name,
@@ -58,10 +60,11 @@ const EmployeeFormPage: React.FC = () => {
           salary: formData.salary,
         };
         await employeeService.create(createData);
+        toast.success('Employee created successfully!');
       }
       navigate('/employees');
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to save employee');
+      toast.error(error.response?.data?.message || 'Failed to save employee');
     } finally {
       setLoading(false);
     }

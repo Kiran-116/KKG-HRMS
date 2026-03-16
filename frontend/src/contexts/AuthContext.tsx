@@ -25,21 +25,48 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const STORAGE_KEYS = {
+  ACCESS_TOKEN: 'access_token',
+  REFRESH_TOKEN: 'refresh_token',
+  USER: 'user',
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('access_token');
+      // First, try to restore user from localStorage for immediate UI update
+      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+        } catch (error) {
+          console.error('Failed to parse stored user:', error);
+        }
+      }
+
+      // Then validate token and refresh user data
+      const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
       if (token) {
         try {
           const userData = await authService.getMe();
           setUser(userData);
+          // Update stored user data
+          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
         } catch (error) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          // Token invalid, clear everything
+          localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.USER);
+          setUser(null);
         }
+      } else {
+        // No token, clear user
+        localStorage.removeItem(STORAGE_KEYS.USER);
+        setUser(null);
       }
       setLoading(false);
     };
@@ -49,8 +76,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     const response = await authService.login({ email, password });
-    localStorage.setItem('access_token', response.access_token);
-    localStorage.setItem('refresh_token', response.refresh_token);
+    localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.access_token);
+    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refresh_token);
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
     setUser(response.user);
   };
 
@@ -61,13 +89,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       password,
       role: role as 'admin' | 'employee' | undefined,
     });
-    localStorage.setItem('access_token', response.access_token);
-    localStorage.setItem('refresh_token', response.refresh_token);
+    localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.access_token);
+    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refresh_token);
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
     setUser(response.user);
   };
 
   const logout = () => {
-    authService.logout();
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.USER);
     setUser(null);
   };
 
