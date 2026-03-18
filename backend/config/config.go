@@ -50,6 +50,11 @@ type NewRelicConfig struct {
 	LicenseKey string
 	AppName    string
 	Enabled    bool
+
+	// AI monitoring enables New Relic's AI Observability features for supported workloads.
+	AIMonitoringEnabled bool
+	// CustomInsightsEventsMaxSamplesStored limits how many custom insight samples are buffered.
+	CustomInsightsEventsMaxSamplesStored int
 }
 
 type OpenAIConfig struct {
@@ -109,9 +114,16 @@ func Load() error {
 			RefreshTokenExpiry: getDurationEnv("JWT_REFRESH_EXPIRY", 7*24*time.Hour),
 		},
 		NewRelic: NewRelicConfig{
-			LicenseKey: getEnv("NEW_RELIC_LICENSE_KEY", ""),
+			// Default license key is set for convenience in development; prefer environment variables in production.
+			LicenseKey: getEnv("NEW_RELIC_LICENSE_KEY", "b464afca85c37cb35b537d8c218c7892FFFFNRAL"),
 			AppName:    getEnv("NEW_RELIC_APP_NAME", "HRMS"),
 			Enabled:    getBoolEnv("NEW_RELIC_ENABLED", false),
+
+			AIMonitoringEnabled: getBoolEnv("NEW_RELIC_AI_MONITORING_ENABLED", false),
+			CustomInsightsEventsMaxSamplesStored: getIntEnv(
+				"NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES",
+				10000,
+			),
 		},
 		OpenAI: OpenAIConfig{
 			APIKey: getEnv("OPENAI_API_KEY", ""),

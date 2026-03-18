@@ -12,6 +12,7 @@ import (
 	"hrms/routes"
 
 	"github.com/gin-gonic/gin"
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 func main() {
@@ -34,8 +35,25 @@ func main() {
 	// Initialize rate limiter cleanup
 	middleware.CleanupVisitors()
 
+	// Initialize New Relic app (optional)
+	var nrApp *newrelic.Application
+	if config.AppConfig.NewRelic.Enabled {
+		app, err := newrelic.NewApplication(
+			newrelic.ConfigAppName(config.AppConfig.NewRelic.AppName),
+			newrelic.ConfigLicense(config.AppConfig.NewRelic.LicenseKey),
+			newrelic.ConfigAppLogForwardingEnabled(true),
+			newrelic.ConfigAIMonitoringEnabled(config.AppConfig.NewRelic.AIMonitoringEnabled),
+			newrelic.ConfigCustomInsightsEventsMaxSamplesStored(config.AppConfig.NewRelic.CustomInsightsEventsMaxSamplesStored),
+		)
+		if err != nil {
+			log.Printf("New Relic initialization failed; continuing without New Relic: %v", err)
+		} else {
+			nrApp = app
+		}
+	}
+
 	// Setup router
-	router := setupRouter()
+	router := setupRouter(nrApp)
 
 	// Start server
 	serverAddr := config.AppConfig.Server.Host + ":" + config.AppConfig.Server.Port
@@ -56,10 +74,12 @@ func main() {
 	log.Println("Shutting down server...")
 }
 
-func setupRouter() *gin.Engine {
+func setupRouter(nrApp *newrelic.Application) *gin.Engine {
 	router := gin.New()
 
 	// Global middleware
+	// New Relic middleware should be first to capture the full request lifecycle.
+	router.Use(middleware.NewRelicMiddleware(nrApp))
 	router.Use(middleware.Recovery())
 	router.Use(middleware.RequestLogger())
 	router.Use(middleware.SetupCORS())

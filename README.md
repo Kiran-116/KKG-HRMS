@@ -25,7 +25,7 @@ A production-grade HR Management System built with React, TypeScript, Golang, an
 - React Router
 
 ### Backend
-- Golang 1.21
+- Golang 1.22+
 - Gin Framework
 - PostgreSQL
 - JWT Authentication
@@ -40,7 +40,7 @@ A production-grade HR Management System built with React, TypeScript, Golang, an
 ### Prerequisites
 
 - Docker and Docker Compose
-- Go 1.21+ (for local development)
+- Go 1.22+ (for local development)
 - Node.js 18+ (for local development)
 
 ### Environment Variables
@@ -68,6 +68,17 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USERNAME=your-email
 SMTP_PASSWORD=your-password
+
+# New Relic (optional)
+# Enable to instrument incoming Gin requests.
+NEW_RELIC_ENABLED=false
+NEW_RELIC_APP_NAME=HRMS
+# Set your New Relic license key via env var (recommended for security).
+NEW_RELIC_LICENSE_KEY=YOUR_NEW_RELIC_LICENSE_KEY
+
+# AI Monitoring (optional)
+NEW_RELIC_AI_MONITORING_ENABLED=false
+NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES=10000
 ```
 
 ### Running with Docker
