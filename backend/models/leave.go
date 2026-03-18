@@ -9,6 +9,7 @@ import (
 type Leave struct {
 	ID         uuid.UUID  `json:"id"`
 	UserID     uuid.UUID  `json:"user_id"`
+	UserName   *string    `json:"user_name,omitempty"` // Optional, populated when joining with users table
 	StartDate  time.Time  `json:"start_date"`
 	EndDate    time.Time  `json:"end_date"`
 	Reason     string     `json:"reason"`

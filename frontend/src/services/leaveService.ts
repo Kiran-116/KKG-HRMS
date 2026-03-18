@@ -3,6 +3,7 @@ import api from './api';
 export interface Leave {
   id: string;
   user_id: string;
+  user_name?: string;
   start_date: string;
   end_date: string;
   reason: string;

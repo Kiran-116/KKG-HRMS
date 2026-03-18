@@ -34,8 +34,8 @@ func (s *attendanceService) CheckIn(userID uuid.UUID, date time.Time) (*models.A
 		return nil, err
 	}
 
-	now := time.Now()
-	checkInTime := time.Date(date.Year(), date.Month(), date.Day(), now.Hour(), now.Minute(), now.Second(), 0, time.UTC)
+	nowUTC := time.Now().UTC()
+	checkInTime := time.Date(date.Year(), date.Month(), date.Day(), nowUTC.Hour(), nowUTC.Minute(), nowUTC.Second(), 0, time.UTC)
 
 	if attendance == nil {
 		// Create new attendance record
@@ -49,8 +49,7 @@ func (s *attendanceService) CheckIn(userID uuid.UUID, date time.Time) (*models.A
 			UpdatedAt: time.Now(),
 		}
 
-		// Determine if late (assuming 9 AM is standard check-in time)
-		expectedCheckIn := time.Date(date.Year(), date.Month(), date.Day(), 9, 0, 0, 0, time.UTC)
+		expectedCheckIn := time.Date(date.Year(), date.Month(), date.Day(), 3, 30, 0, 0, time.UTC)
 		if checkInTime.After(expectedCheckIn) {
 			attendance.Status = models.StatusLate
 		}
@@ -97,8 +96,8 @@ func (s *attendanceService) CheckOut(userID uuid.UUID, date time.Time) (*models.
 		return nil, errors.New("already checked out for this date")
 	}
 
-	now := time.Now()
-	checkOutTime := time.Date(date.Year(), date.Month(), date.Day(), now.Hour(), now.Minute(), now.Second(), 0, time.UTC)
+	nowUTC := time.Now().UTC()
+	checkOutTime := time.Date(date.Year(), date.Month(), date.Day(), nowUTC.Hour(), nowUTC.Minute(), nowUTC.Second(), 0, time.UTC)
 	attendance.CheckOut = &checkOutTime
 
 	// Check if half day (less than 4 hours)

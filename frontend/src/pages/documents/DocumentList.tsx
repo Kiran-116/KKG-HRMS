@@ -2,11 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { documentService, Document } from '../../services/documentService';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const DocumentListPage: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    documentId: string | null;
+  }>({
+    isOpen: false,
+    documentId: null,
+  });
 
   useEffect(() => {
     loadDocuments();
@@ -23,15 +31,29 @@ const DocumentListPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this document?')) return;
+  const handleDeleteClick = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      documentId: id,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmModal.documentId) return;
+
     try {
-      await documentService.delete(id);
+      await documentService.delete(confirmModal.documentId);
       toast.success('Document deleted successfully!');
       loadDocuments();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to delete document');
+    } finally {
+      setConfirmModal({ isOpen: false, documentId: null });
     }
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmModal({ isOpen: false, documentId: null });
   };
 
   const formatFileSize = (bytes: number) => {
@@ -80,7 +102,7 @@ const DocumentListPage: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
-                    onClick={() => handleDelete(doc.id)}
+                    onClick={() => handleDeleteClick(doc.id)}
                     className="text-red-600 hover:text-red-900"
                   >
                     Delete
@@ -95,6 +117,17 @@ const DocumentListPage: React.FC = () => {
       {documents?.length === 0 && (
         <div className="text-center py-12 text-gray-500">No documents found</div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title="Delete Document"
+        message="Are you sure you want to delete this document? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
     </div>
   );
 };

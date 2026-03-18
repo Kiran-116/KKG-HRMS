@@ -134,20 +134,21 @@ func (r *leaveRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*m
 
 func (r *leaveRepository) GetAll(limit, offset int, status *string) ([]*models.Leave, error) {
 	query := `
-		SELECT id, user_id, start_date, end_date, reason, status, approved_by, created_at, updated_at
-		FROM leaves
+		SELECT l.id, l.user_id, u.name as user_name, l.start_date, l.end_date, l.reason, l.status, l.approved_by, l.created_at, l.updated_at
+		FROM leaves l
+		LEFT JOIN users u ON l.user_id = u.id
 		WHERE 1=1
 	`
 	args := []interface{}{}
 	argPos := 1
 	
 	if status != nil {
-		query += ` AND status = $` + string(rune('0'+argPos))
+		query += ` AND l.status = $` + string(rune('0'+argPos))
 		args = append(args, *status)
 		argPos++
 	}
 	
-	query += ` ORDER BY created_at DESC LIMIT $` + string(rune('0'+argPos)) + ` OFFSET $` + string(rune('0'+argPos+1))
+	query += ` ORDER BY l.created_at DESC LIMIT $` + string(rune('0'+argPos)) + ` OFFSET $` + string(rune('0'+argPos+1))
 	args = append(args, limit, offset)
 	
 	rows, err := r.db.Query(query, args...)
@@ -160,10 +161,12 @@ func (r *leaveRepository) GetAll(limit, offset int, status *string) ([]*models.L
 	for rows.Next() {
 		leave := &models.Leave{}
 		var approvedBy sql.NullString
+		var userName sql.NullString
 		
 		err := rows.Scan(
 			&leave.ID,
 			&leave.UserID,
+			&userName,
 			&leave.StartDate,
 			&leave.EndDate,
 			&leave.Reason,
@@ -176,6 +179,9 @@ func (r *leaveRepository) GetAll(limit, offset int, status *string) ([]*models.L
 			return nil, err
 		}
 		
+		if userName.Valid {
+			leave.UserName = &userName.String
+		}
 		if approvedBy.Valid {
 			if id, err := uuid.Parse(approvedBy.String); err == nil {
 				leave.ApprovedBy = &id

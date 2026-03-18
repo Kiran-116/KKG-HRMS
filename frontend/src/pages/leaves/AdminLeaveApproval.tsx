@@ -1,12 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { leaveService, Leave } from '../../services/leaveService';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const AdminLeaveApprovalPage: React.FC = () => {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'approve' | 'reject';
+    leaveId: string | null;
+  }>({
+    isOpen: false,
+    type: 'approve',
+    leaveId: null,
+  });
 
   useEffect(() => {
     loadLeaves();
@@ -23,26 +33,46 @@ const AdminLeaveApprovalPage: React.FC = () => {
     }
   };
 
-  const handleApprove = async (id: string) => {
-    if (!window.confirm('Approve this leave request?')) return;
+  const handleApproveClick = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'approve',
+      leaveId: id,
+    });
+  };
+
+  const handleRejectClick = (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'reject',
+      leaveId: id,
+    });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmModal.leaveId) return;
+
     try {
-      await leaveService.approve(id);
-      toast.success('Leave request approved successfully!');
+      if (confirmModal.type === 'approve') {
+        await leaveService.approve(confirmModal.leaveId);
+        toast.success('Leave request approved successfully!');
+      } else {
+        await leaveService.reject(confirmModal.leaveId);
+        toast.success('Leave request rejected');
+      }
       loadLeaves();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to approve leave');
+      toast.error(
+        error.response?.data?.message ||
+        `Failed to ${confirmModal.type === 'approve' ? 'approve' : 'reject'} leave`
+      );
+    } finally {
+      setConfirmModal({ isOpen: false, type: 'approve', leaveId: null });
     }
   };
 
-  const handleReject = async (id: string) => {
-    if (!window.confirm('Reject this leave request?')) return;
-    try {
-      await leaveService.reject(id);
-      toast.success('Leave request rejected');
-      loadLeaves();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to reject leave');
-    }
+  const handleCancel = () => {
+    setConfirmModal({ isOpen: false, type: 'approve', leaveId: null });
   };
 
   if (loading) {
@@ -69,7 +99,7 @@ const AdminLeaveApprovalPage: React.FC = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
@@ -80,7 +110,9 @@ const AdminLeaveApprovalPage: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {leaves?.map((leave) => (
               <tr key={leave.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{leave.user_id}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {leave.user_name || leave.user_id}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {new Date(leave.start_date).toLocaleDateString()}
                 </td>
@@ -101,13 +133,13 @@ const AdminLeaveApprovalPage: React.FC = () => {
                   {leave.status === 'pending' && (
                     <>
                       <button
-                        onClick={() => handleApprove(leave.id)}
+                        onClick={() => handleApproveClick(leave.id)}
                         className="text-green-600 hover:text-green-900"
                       >
                         Approve
                       </button>
                       <button
-                        onClick={() => handleReject(leave.id)}
+                        onClick={() => handleRejectClick(leave.id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         Reject
@@ -120,6 +152,21 @@ const AdminLeaveApprovalPage: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.type === 'approve' ? 'Approve Leave Request' : 'Reject Leave Request'}
+        message={
+          confirmModal.type === 'approve'
+            ? 'Are you sure you want to approve this leave request?'
+            : 'Are you sure you want to reject this leave request?'
+        }
+        confirmText={confirmModal.type === 'approve' ? 'Approve' : 'Reject'}
+        cancelText="Cancel"
+        type={confirmModal.type === 'reject' ? 'danger' : 'info'}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };
