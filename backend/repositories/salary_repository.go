@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -11,10 +12,10 @@ import (
 )
 
 type SalaryRepository interface {
-	Create(salary *models.Salary) error
-	GetByID(id uuid.UUID) (*models.Salary, error)
-	GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Salary, error)
-	GetByUserIDAndMonthYear(userID uuid.UUID, month, year int) (*models.Salary, error)
+	Create(ctx context.Context, salary *models.Salary) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Salary, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Salary, error)
+	GetByUserIDAndMonthYear(ctx context.Context, userID uuid.UUID, month, year int) (*models.Salary, error)
 }
 
 type salaryRepository struct {
@@ -27,14 +28,15 @@ func NewSalaryRepository() SalaryRepository {
 	}
 }
 
-func (r *salaryRepository) Create(salary *models.Salary) error {
+func (r *salaryRepository) Create(ctx context.Context, salary *models.Salary) error {
 	query := `
 		INSERT INTO salaries (id, user_id, base_salary, bonus, deductions, month, year)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING net_salary, created_at, updated_at
 	`
-	
-	err := r.db.QueryRow(
+
+	err := r.db.QueryRowContext(
+		ctx,
 		query,
 		salary.ID,
 		salary.UserID,
@@ -44,19 +46,19 @@ func (r *salaryRepository) Create(salary *models.Salary) error {
 		salary.Month,
 		salary.Year,
 	).Scan(&salary.NetSalary, &salary.CreatedAt, &salary.UpdatedAt)
-	
+
 	return err
 }
 
-func (r *salaryRepository) GetByID(id uuid.UUID) (*models.Salary, error) {
+func (r *salaryRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Salary, error) {
 	salary := &models.Salary{}
 	query := `
 		SELECT id, user_id, base_salary, bonus, deductions, net_salary, month, year, created_at, updated_at
 		FROM salaries
 		WHERE id = $1
 	`
-	
-	err := r.db.QueryRow(query, id).Scan(
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&salary.ID,
 		&salary.UserID,
 		&salary.BaseSalary,
@@ -68,15 +70,15 @@ func (r *salaryRepository) GetByID(id uuid.UUID) (*models.Salary, error) {
 		&salary.CreatedAt,
 		&salary.UpdatedAt,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, errors.New("salary not found")
 	}
-	
+
 	return salary, err
 }
 
-func (r *salaryRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Salary, error) {
+func (r *salaryRepository) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Salary, error) {
 	query := `
 		SELECT id, user_id, base_salary, bonus, deductions, net_salary, month, year, created_at, updated_at
 		FROM salaries
@@ -84,13 +86,13 @@ func (r *salaryRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*
 		ORDER BY year DESC, month DESC
 		LIMIT $2 OFFSET $3
 	`
-	
-	rows, err := r.db.Query(query, userID, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var salaries []*models.Salary
 	for rows.Next() {
 		salary := &models.Salary{}
@@ -111,19 +113,19 @@ func (r *salaryRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*
 		}
 		salaries = append(salaries, salary)
 	}
-	
+
 	return salaries, rows.Err()
 }
 
-func (r *salaryRepository) GetByUserIDAndMonthYear(userID uuid.UUID, month, year int) (*models.Salary, error) {
+func (r *salaryRepository) GetByUserIDAndMonthYear(ctx context.Context, userID uuid.UUID, month, year int) (*models.Salary, error) {
 	salary := &models.Salary{}
 	query := `
 		SELECT id, user_id, base_salary, bonus, deductions, net_salary, month, year, created_at, updated_at
 		FROM salaries
 		WHERE user_id = $1 AND month = $2 AND year = $3
 	`
-	
-	err := r.db.QueryRow(query, userID, month, year).Scan(
+
+	err := r.db.QueryRowContext(ctx, query, userID, month, year).Scan(
 		&salary.ID,
 		&salary.UserID,
 		&salary.BaseSalary,
@@ -135,10 +137,10 @@ func (r *salaryRepository) GetByUserIDAndMonthYear(userID uuid.UUID, month, year
 		&salary.CreatedAt,
 		&salary.UpdatedAt,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
-	
+
 	return salary, err
 }

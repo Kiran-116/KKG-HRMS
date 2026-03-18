@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -11,11 +12,11 @@ import (
 )
 
 type LeaveRepository interface {
-	Create(leave *models.Leave) error
-	GetByID(id uuid.UUID) (*models.Leave, error)
-	GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Leave, error)
-	GetAll(limit, offset int, status *string) ([]*models.Leave, error)
-	Update(leave *models.Leave) error
+	Create(ctx context.Context, leave *models.Leave) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Leave, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Leave, error)
+	GetAll(ctx context.Context, limit, offset int, status *string) ([]*models.Leave, error)
+	Update(ctx context.Context, leave *models.Leave) error
 }
 
 type leaveRepository struct {
@@ -28,14 +29,15 @@ func NewLeaveRepository() LeaveRepository {
 	}
 }
 
-func (r *leaveRepository) Create(leave *models.Leave) error {
+func (r *leaveRepository) Create(ctx context.Context, leave *models.Leave) error {
 	query := `
 		INSERT INTO leaves (id, user_id, start_date, end_date, reason, status)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING created_at, updated_at
 	`
 	
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(
+		ctx,
 		query,
 		leave.ID,
 		leave.UserID,
@@ -48,7 +50,7 @@ func (r *leaveRepository) Create(leave *models.Leave) error {
 	return err
 }
 
-func (r *leaveRepository) GetByID(id uuid.UUID) (*models.Leave, error) {
+func (r *leaveRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Leave, error) {
 	leave := &models.Leave{}
 	query := `
 		SELECT id, user_id, start_date, end_date, reason, status, approved_by, created_at, updated_at
@@ -57,7 +59,7 @@ func (r *leaveRepository) GetByID(id uuid.UUID) (*models.Leave, error) {
 	`
 	
 	var approvedBy sql.NullString
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&leave.ID,
 		&leave.UserID,
 		&leave.StartDate,
@@ -85,7 +87,7 @@ func (r *leaveRepository) GetByID(id uuid.UUID) (*models.Leave, error) {
 	return leave, nil
 }
 
-func (r *leaveRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Leave, error) {
+func (r *leaveRepository) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Leave, error) {
 	query := `
 		SELECT id, user_id, start_date, end_date, reason, status, approved_by, created_at, updated_at
 		FROM leaves
@@ -94,7 +96,7 @@ func (r *leaveRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*m
 		LIMIT $2 OFFSET $3
 	`
 	
-	rows, err := r.db.Query(query, userID, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +134,7 @@ func (r *leaveRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*m
 	return leaves, rows.Err()
 }
 
-func (r *leaveRepository) GetAll(limit, offset int, status *string) ([]*models.Leave, error) {
+func (r *leaveRepository) GetAll(ctx context.Context, limit, offset int, status *string) ([]*models.Leave, error) {
 	query := `
 		SELECT l.id, l.user_id, u.name as user_name, l.start_date, l.end_date, l.reason, l.status, l.approved_by, l.created_at, l.updated_at
 		FROM leaves l
@@ -151,7 +153,7 @@ func (r *leaveRepository) GetAll(limit, offset int, status *string) ([]*models.L
 	query += ` ORDER BY l.created_at DESC LIMIT $` + string(rune('0'+argPos)) + ` OFFSET $` + string(rune('0'+argPos+1))
 	args = append(args, limit, offset)
 	
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +196,7 @@ func (r *leaveRepository) GetAll(limit, offset int, status *string) ([]*models.L
 	return leaves, rows.Err()
 }
 
-func (r *leaveRepository) Update(leave *models.Leave) error {
+func (r *leaveRepository) Update(ctx context.Context, leave *models.Leave) error {
 	query := `
 		UPDATE leaves
 		SET status = $2, approved_by = $3, updated_at = CURRENT_TIMESTAMP
@@ -202,7 +204,8 @@ func (r *leaveRepository) Update(leave *models.Leave) error {
 		RETURNING updated_at
 	`
 	
-	return r.db.QueryRow(
+	return r.db.QueryRowContext(
+		ctx,
 		query,
 		leave.ID,
 		leave.Status,

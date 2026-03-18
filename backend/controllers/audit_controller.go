@@ -37,7 +37,7 @@ func (c *AuditController) GetAuditLogs(ctx *gin.Context) {
 		action = &actionStr
 	}
 
-	logs, err := c.auditService.GetAll(page, limit, userID, action)
+	logs, err := c.auditService.GetAll(ctx.Request.Context(), page, limit, userID, action)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch audit logs",

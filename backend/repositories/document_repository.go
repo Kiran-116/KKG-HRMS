@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -11,10 +12,10 @@ import (
 )
 
 type DocumentRepository interface {
-	Create(document *models.Document) error
-	GetByID(id uuid.UUID) (*models.Document, error)
-	GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Document, error)
-	Delete(id uuid.UUID) error
+	Create(ctx context.Context, document *models.Document) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Document, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Document, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type documentRepository struct {
@@ -27,14 +28,15 @@ func NewDocumentRepository() DocumentRepository {
 	}
 }
 
-func (r *documentRepository) Create(document *models.Document) error {
+func (r *documentRepository) Create(ctx context.Context, document *models.Document) error {
 	query := `
 		INSERT INTO documents (id, user_id, file_url, file_name, file_size, document_type)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING uploaded_at, created_at, updated_at
 	`
-	
-	err := r.db.QueryRow(
+
+	err := r.db.QueryRowContext(
+		ctx,
 		query,
 		document.ID,
 		document.UserID,
@@ -43,19 +45,19 @@ func (r *documentRepository) Create(document *models.Document) error {
 		document.FileSize,
 		document.DocumentType,
 	).Scan(&document.UploadedAt, &document.CreatedAt, &document.UpdatedAt)
-	
+
 	return err
 }
 
-func (r *documentRepository) GetByID(id uuid.UUID) (*models.Document, error) {
+func (r *documentRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Document, error) {
 	document := &models.Document{}
 	query := `
 		SELECT id, user_id, file_url, file_name, file_size, document_type, uploaded_at, created_at, updated_at
 		FROM documents
 		WHERE id = $1
 	`
-	
-	err := r.db.QueryRow(query, id).Scan(
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&document.ID,
 		&document.UserID,
 		&document.FileURL,
@@ -66,15 +68,15 @@ func (r *documentRepository) GetByID(id uuid.UUID) (*models.Document, error) {
 		&document.CreatedAt,
 		&document.UpdatedAt,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, errors.New("document not found")
 	}
-	
+
 	return document, err
 }
 
-func (r *documentRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Document, error) {
+func (r *documentRepository) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Document, error) {
 	query := `
 		SELECT id, user_id, file_url, file_name, file_size, document_type, uploaded_at, created_at, updated_at
 		FROM documents
@@ -82,13 +84,13 @@ func (r *documentRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([
 		ORDER BY uploaded_at DESC
 		LIMIT $2 OFFSET $3
 	`
-	
-	rows, err := r.db.Query(query, userID, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var documents []*models.Document
 	for rows.Next() {
 		document := &models.Document{}
@@ -108,25 +110,25 @@ func (r *documentRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([
 		}
 		documents = append(documents, document)
 	}
-	
+
 	return documents, rows.Err()
 }
 
-func (r *documentRepository) Delete(id uuid.UUID) error {
+func (r *documentRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM documents WHERE id = $1`
-	result, err := r.db.Exec(query, id)
+	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	
+
 	if rowsAffected == 0 {
 		return errors.New("document not found")
 	}
-	
+
 	return nil
 }

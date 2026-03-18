@@ -28,7 +28,7 @@ func (c *NotificationController) GetNotifications(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 
-	notifications, err := c.notificationService.GetByUserID(id, page, limit)
+	notifications, err := c.notificationService.GetByUserID(ctx.Request.Context(), id, page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch notifications",
@@ -45,7 +45,7 @@ func (c *NotificationController) GetUnreadCount(ctx *gin.Context) {
 	userID, _ := ctx.Get("user_id")
 	id := userID.(uuid.UUID)
 
-	count, err := c.notificationService.GetUnreadCount(id)
+	count, err := c.notificationService.GetUnreadCount(ctx.Request.Context(), id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch unread count",
@@ -71,7 +71,7 @@ func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
 	userID, _ := ctx.Get("user_id")
 	id := userID.(uuid.UUID)
 
-	if err := c.notificationService.MarkAsRead(notificationID, id); err != nil {
+	if err := c.notificationService.MarkAsRead(ctx.Request.Context(), notificationID, id); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to mark as read",
 			"message": err.Error(),

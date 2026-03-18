@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -12,12 +13,12 @@ import (
 )
 
 type EmployeeService interface {
-	CreateEmployee(req *models.CreateEmployeeRequest) (*models.Employee, error)
-	UpdateEmployee(id uuid.UUID, req *models.UpdateEmployeeRequest) (*models.Employee, error)
-	GetEmployee(id uuid.UUID) (*models.Employee, error)
-	GetEmployeeByID(id uuid.UUID) (*models.Employee, error)
-	ListEmployees(page, limit int) (*models.EmployeeListResponse, error)
-	DeactivateEmployee(id uuid.UUID) error
+	CreateEmployee(ctx context.Context, req *models.CreateEmployeeRequest) (*models.Employee, error)
+	UpdateEmployee(ctx context.Context, id uuid.UUID, req *models.UpdateEmployeeRequest) (*models.Employee, error)
+	GetEmployee(ctx context.Context, id uuid.UUID) (*models.Employee, error)
+	GetEmployeeByID(ctx context.Context, id uuid.UUID) (*models.Employee, error)
+	ListEmployees(ctx context.Context, page, limit int) (*models.EmployeeListResponse, error)
+	DeactivateEmployee(ctx context.Context, id uuid.UUID) error
 }
 
 type employeeService struct {
@@ -32,9 +33,9 @@ func NewEmployeeService(userRepo repositories.UserRepository, employeeRepo repos
 	}
 }
 
-func (s *employeeService) CreateEmployee(req *models.CreateEmployeeRequest) (*models.Employee, error) {
+func (s *employeeService) CreateEmployee(ctx context.Context, req *models.CreateEmployeeRequest) (*models.Employee, error) {
 	// Check if user already exists
-	existingUser, _ := s.userRepo.GetByEmail(req.Email)
+	existingUser, _ := s.userRepo.GetByEmail(ctx, req.Email)
 	if existingUser != nil {
 		return nil, errors.New("employee with this email already exists")
 	}
@@ -83,15 +84,15 @@ func (s *employeeService) CreateEmployee(req *models.CreateEmployeeRequest) (*mo
 		user.Salary = &req.Salary
 	}
 
-	if err := s.userRepo.Create(user); err != nil {
+	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, errors.New("failed to create employee")
 	}
 
-	return s.employeeRepo.GetByID(user.ID)
+	return s.employeeRepo.GetByID(ctx, user.ID)
 }
 
-func (s *employeeService) UpdateEmployee(id uuid.UUID, req *models.UpdateEmployeeRequest) (*models.Employee, error) {
-	user, err := s.userRepo.GetByID(id)
+func (s *employeeService) UpdateEmployee(ctx context.Context, id uuid.UUID, req *models.UpdateEmployeeRequest) (*models.Employee, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, errors.New("employee not found")
 	}
@@ -102,7 +103,7 @@ func (s *employeeService) UpdateEmployee(id uuid.UUID, req *models.UpdateEmploye
 	}
 	if req.Email != "" && req.Email != user.Email {
 		// Check if new email already exists
-		existingUser, _ := s.userRepo.GetByEmail(req.Email)
+		existingUser, _ := s.userRepo.GetByEmail(ctx, req.Email)
 		if existingUser != nil && existingUser.ID != id {
 			return nil, errors.New("email already in use")
 		}
@@ -135,22 +136,22 @@ func (s *employeeService) UpdateEmployee(id uuid.UUID, req *models.UpdateEmploye
 		user.IsActive = *req.IsActive
 	}
 
-	if err := s.userRepo.Update(user); err != nil {
+	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, errors.New("failed to update employee")
 	}
 
-	return s.employeeRepo.GetByID(id)
+	return s.employeeRepo.GetByID(ctx, id)
 }
 
-func (s *employeeService) GetEmployee(id uuid.UUID) (*models.Employee, error) {
-	return s.employeeRepo.GetByID(id)
+func (s *employeeService) GetEmployee(ctx context.Context, id uuid.UUID) (*models.Employee, error) {
+	return s.employeeRepo.GetByID(ctx, id)
 }
 
-func (s *employeeService) GetEmployeeByID(id uuid.UUID) (*models.Employee, error) {
-	return s.employeeRepo.GetByID(id)
+func (s *employeeService) GetEmployeeByID(ctx context.Context, id uuid.UUID) (*models.Employee, error) {
+	return s.employeeRepo.GetByID(ctx, id)
 }
 
-func (s *employeeService) ListEmployees(page, limit int) (*models.EmployeeListResponse, error) {
+func (s *employeeService) ListEmployees(ctx context.Context, page, limit int) (*models.EmployeeListResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -163,12 +164,12 @@ func (s *employeeService) ListEmployees(page, limit int) (*models.EmployeeListRe
 
 	offset := (page - 1) * limit
 
-	employees, err := s.employeeRepo.List(limit, offset)
+	employees, err := s.employeeRepo.List(ctx, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 
-	total, err := s.employeeRepo.Count()
+	total, err := s.employeeRepo.Count(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +182,6 @@ func (s *employeeService) ListEmployees(page, limit int) (*models.EmployeeListRe
 	}, nil
 }
 
-func (s *employeeService) DeactivateEmployee(id uuid.UUID) error {
-	return s.userRepo.Delete(id)
+func (s *employeeService) DeactivateEmployee(ctx context.Context, id uuid.UUID) error {
+	return s.userRepo.Delete(ctx, id)
 }

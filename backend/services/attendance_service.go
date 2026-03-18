@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -11,10 +12,10 @@ import (
 )
 
 type AttendanceService interface {
-	CheckIn(userID uuid.UUID, date time.Time) (*models.Attendance, error)
-	CheckOut(userID uuid.UUID, date time.Time) (*models.Attendance, error)
-	GetByUserID(userID uuid.UUID, page, limit int) ([]*models.Attendance, error)
-	GetAll(page, limit int, userID *uuid.UUID, date *time.Time) ([]*models.Attendance, error)
+	CheckIn(ctx context.Context, userID uuid.UUID, date time.Time) (*models.Attendance, error)
+	CheckOut(ctx context.Context, userID uuid.UUID, date time.Time) (*models.Attendance, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, page, limit int) ([]*models.Attendance, error)
+	GetAll(ctx context.Context, page, limit int, userID *uuid.UUID, date *time.Time) ([]*models.Attendance, error)
 }
 
 type attendanceService struct {
@@ -27,9 +28,9 @@ func NewAttendanceService(attendanceRepo repositories.AttendanceRepository) Atte
 	}
 }
 
-func (s *attendanceService) CheckIn(userID uuid.UUID, date time.Time) (*models.Attendance, error) {
+func (s *attendanceService) CheckIn(ctx context.Context, userID uuid.UUID, date time.Time) (*models.Attendance, error) {
 	// Get or create attendance record for today
-	attendance, err := s.attendanceRepo.GetByUserAndDate(userID, date)
+	attendance, err := s.attendanceRepo.GetByUserAndDate(ctx, userID, date)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func (s *attendanceService) CheckIn(userID uuid.UUID, date time.Time) (*models.A
 			attendance.Status = models.StatusLate
 		}
 
-		if err := s.attendanceRepo.Create(attendance); err != nil {
+		if err := s.attendanceRepo.Create(ctx, attendance); err != nil {
 			return nil, errors.New("failed to check in")
 		}
 	} else {
@@ -70,7 +71,7 @@ func (s *attendanceService) CheckIn(userID uuid.UUID, date time.Time) (*models.A
 			attendance.Status = models.StatusLate
 		}
 
-		if err := s.attendanceRepo.Update(attendance); err != nil {
+		if err := s.attendanceRepo.Update(ctx, attendance); err != nil {
 			return nil, errors.New("failed to update check-in")
 		}
 	}
@@ -78,8 +79,8 @@ func (s *attendanceService) CheckIn(userID uuid.UUID, date time.Time) (*models.A
 	return attendance, nil
 }
 
-func (s *attendanceService) CheckOut(userID uuid.UUID, date time.Time) (*models.Attendance, error) {
-	attendance, err := s.attendanceRepo.GetByUserAndDate(userID, date)
+func (s *attendanceService) CheckOut(ctx context.Context, userID uuid.UUID, date time.Time) (*models.Attendance, error) {
+	attendance, err := s.attendanceRepo.GetByUserAndDate(ctx, userID, date)
 	if err != nil {
 		return nil, err
 	}
@@ -106,14 +107,14 @@ func (s *attendanceService) CheckOut(userID uuid.UUID, date time.Time) (*models.
 		attendance.Status = models.StatusHalfDay
 	}
 
-	if err := s.attendanceRepo.Update(attendance); err != nil {
+	if err := s.attendanceRepo.Update(ctx, attendance); err != nil {
 		return nil, errors.New("failed to check out")
 	}
 
 	return attendance, nil
 }
 
-func (s *attendanceService) GetByUserID(userID uuid.UUID, page, limit int) ([]*models.Attendance, error) {
+func (s *attendanceService) GetByUserID(ctx context.Context, userID uuid.UUID, page, limit int) ([]*models.Attendance, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -125,10 +126,10 @@ func (s *attendanceService) GetByUserID(userID uuid.UUID, page, limit int) ([]*m
 	}
 
 	offset := (page - 1) * limit
-	return s.attendanceRepo.GetByUserID(userID, limit, offset)
+	return s.attendanceRepo.GetByUserID(ctx, userID, limit, offset)
 }
 
-func (s *attendanceService) GetAll(page, limit int, userID *uuid.UUID, date *time.Time) ([]*models.Attendance, error) {
+func (s *attendanceService) GetAll(ctx context.Context, page, limit int, userID *uuid.UUID, date *time.Time) ([]*models.Attendance, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -140,5 +141,5 @@ func (s *attendanceService) GetAll(page, limit int, userID *uuid.UUID, date *tim
 	}
 
 	offset := (page - 1) * limit
-	return s.attendanceRepo.GetAll(limit, offset, userID, date)
+	return s.attendanceRepo.GetAll(ctx, limit, offset, userID, date)
 }

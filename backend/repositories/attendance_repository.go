@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"time"
@@ -12,12 +13,12 @@ import (
 )
 
 type AttendanceRepository interface {
-	Create(attendance *models.Attendance) error
-	GetByID(id uuid.UUID) (*models.Attendance, error)
-	GetByUserAndDate(userID uuid.UUID, date time.Time) (*models.Attendance, error)
-	GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Attendance, error)
-	GetAll(limit, offset int, userID *uuid.UUID, date *time.Time) ([]*models.Attendance, error)
-	Update(attendance *models.Attendance) error
+	Create(ctx context.Context, attendance *models.Attendance) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Attendance, error)
+	GetByUserAndDate(ctx context.Context, userID uuid.UUID, date time.Time) (*models.Attendance, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Attendance, error)
+	GetAll(ctx context.Context, limit, offset int, userID *uuid.UUID, date *time.Time) ([]*models.Attendance, error)
+	Update(ctx context.Context, attendance *models.Attendance) error
 }
 
 type attendanceRepository struct {
@@ -30,14 +31,15 @@ func NewAttendanceRepository() AttendanceRepository {
 	}
 }
 
-func (r *attendanceRepository) Create(attendance *models.Attendance) error {
+func (r *attendanceRepository) Create(ctx context.Context, attendance *models.Attendance) error {
 	query := `
 		INSERT INTO attendance (id, user_id, date, check_in, check_out, status)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING created_at, updated_at
 	`
 
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(
+		ctx,
 		query,
 		attendance.ID,
 		attendance.UserID,
@@ -50,7 +52,7 @@ func (r *attendanceRepository) Create(attendance *models.Attendance) error {
 	return err
 }
 
-func (r *attendanceRepository) GetByID(id uuid.UUID) (*models.Attendance, error) {
+func (r *attendanceRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Attendance, error) {
 	attendance := &models.Attendance{}
 	query := `
 		SELECT id, user_id, date, check_in, check_out, status, created_at, updated_at
@@ -59,7 +61,7 @@ func (r *attendanceRepository) GetByID(id uuid.UUID) (*models.Attendance, error)
 	`
 
 	var checkIn, checkOut sql.NullTime
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&attendance.ID,
 		&attendance.UserID,
 		&attendance.Date,
@@ -87,7 +89,7 @@ func (r *attendanceRepository) GetByID(id uuid.UUID) (*models.Attendance, error)
 	return attendance, nil
 }
 
-func (r *attendanceRepository) GetByUserAndDate(userID uuid.UUID, date time.Time) (*models.Attendance, error) {
+func (r *attendanceRepository) GetByUserAndDate(ctx context.Context, userID uuid.UUID, date time.Time) (*models.Attendance, error) {
 	attendance := &models.Attendance{}
 	query := `
 		SELECT id, user_id, date, check_in, check_out, status, created_at, updated_at
@@ -96,7 +98,7 @@ func (r *attendanceRepository) GetByUserAndDate(userID uuid.UUID, date time.Time
 	`
 
 	var checkIn, checkOut sql.NullTime
-	err := r.db.QueryRow(query, userID, date).Scan(
+	err := r.db.QueryRowContext(ctx, query, userID, date).Scan(
 		&attendance.ID,
 		&attendance.UserID,
 		&attendance.Date,
@@ -124,7 +126,7 @@ func (r *attendanceRepository) GetByUserAndDate(userID uuid.UUID, date time.Time
 	return attendance, nil
 }
 
-func (r *attendanceRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Attendance, error) {
+func (r *attendanceRepository) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Attendance, error) {
 	query := `
 		SELECT id, user_id, date, check_in, check_out, status, created_at, updated_at
 		FROM attendance
@@ -133,7 +135,7 @@ func (r *attendanceRepository) GetByUserID(userID uuid.UUID, limit, offset int) 
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(query, userID, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +173,7 @@ func (r *attendanceRepository) GetByUserID(userID uuid.UUID, limit, offset int) 
 	return attendances, rows.Err()
 }
 
-func (r *attendanceRepository) GetAll(limit, offset int, userID *uuid.UUID, date *time.Time) ([]*models.Attendance, error) {
+func (r *attendanceRepository) GetAll(ctx context.Context, limit, offset int, userID *uuid.UUID, date *time.Time) ([]*models.Attendance, error) {
 	query := `
 		SELECT a.id, a.user_id, u.name as user_name, a.date, a.check_in, a.check_out, a.status, a.created_at, a.updated_at
 		FROM attendance a
@@ -195,7 +197,7 @@ func (r *attendanceRepository) GetAll(limit, offset int, userID *uuid.UUID, date
 	query += ` ORDER BY a.date DESC LIMIT $` + string(rune('0'+argPos)) + ` OFFSET $` + string(rune('0'+argPos+1))
 	args = append(args, limit, offset)
 
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +240,7 @@ func (r *attendanceRepository) GetAll(limit, offset int, userID *uuid.UUID, date
 	return attendances, rows.Err()
 }
 
-func (r *attendanceRepository) Update(attendance *models.Attendance) error {
+func (r *attendanceRepository) Update(ctx context.Context, attendance *models.Attendance) error {
 	query := `
 		UPDATE attendance
 		SET check_in = $2, check_out = $3, status = $4, updated_at = CURRENT_TIMESTAMP
@@ -246,7 +248,8 @@ func (r *attendanceRepository) Update(attendance *models.Attendance) error {
 		RETURNING updated_at
 	`
 
-	return r.db.QueryRow(
+	return r.db.QueryRowContext(
+		ctx,
 		query,
 		attendance.ID,
 		attendance.CheckIn,

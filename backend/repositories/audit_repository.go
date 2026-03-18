@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 
@@ -11,8 +12,8 @@ import (
 )
 
 type AuditRepository interface {
-	Create(auditLog *models.AuditLog) error
-	GetAll(limit, offset int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error)
+	Create(ctx context.Context, auditLog *models.AuditLog) error
+	GetAll(ctx context.Context, limit, offset int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error)
 }
 
 type auditRepository struct {
@@ -25,15 +26,16 @@ func NewAuditRepository() AuditRepository {
 	}
 }
 
-func (r *auditRepository) Create(auditLog *models.AuditLog) error {
+func (r *auditRepository) Create(ctx context.Context, auditLog *models.AuditLog) error {
 	metadataJSON, _ := json.Marshal(auditLog.Metadata)
-	
+
 	query := `
 		INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, description, metadata, ip_address, user_agent)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
-	
-	_, err := r.db.Exec(
+
+	_, err := r.db.ExecContext(
+		ctx,
 		query,
 		auditLog.ID,
 		auditLog.UserID,
@@ -45,11 +47,11 @@ func (r *auditRepository) Create(auditLog *models.AuditLog) error {
 		auditLog.IPAddress,
 		auditLog.UserAgent,
 	)
-	
+
 	return err
 }
 
-func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error) {
+func (r *auditRepository) GetAll(ctx context.Context, limit, offset int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error) {
 	query := `
 		SELECT a.id, a.user_id, u.name as user_name, a.action, a.entity_type, a.entity_id, a.description, a.metadata, a.ip_address, a.user_agent, a.created_at
 		FROM audit_logs a
@@ -58,7 +60,7 @@ func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *s
 	`
 	args := []interface{}{}
 	argPos := 1
-	
+
 	if userID != nil {
 		query += ` AND a.user_id = $` + string(rune('0'+argPos))
 		args = append(args, *userID)
@@ -69,16 +71,16 @@ func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *s
 		args = append(args, *action)
 		argPos++
 	}
-	
+
 	query += ` ORDER BY a.created_at DESC LIMIT $` + string(rune('0'+argPos)) + ` OFFSET $` + string(rune('0'+argPos+1))
 	args = append(args, limit, offset)
-	
-	rows, err := r.db.Query(query, args...)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var auditLogs []*models.AuditLog
 	for rows.Next() {
 		auditLog := &models.AuditLog{}
@@ -86,7 +88,7 @@ func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *s
 		var userName sql.NullString
 		var description sql.NullString
 		var metadataJSON []byte
-		
+
 		err := rows.Scan(
 			&auditLog.ID,
 			&userID,
@@ -103,7 +105,7 @@ func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *s
 		if err != nil {
 			return nil, err
 		}
-		
+
 		if userID.Valid {
 			if id, err := uuid.Parse(userID.String); err == nil {
 				auditLog.UserID = &id
@@ -123,9 +125,9 @@ func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *s
 		if len(metadataJSON) > 0 {
 			json.Unmarshal(metadataJSON, &auditLog.Metadata)
 		}
-		
+
 		auditLogs = append(auditLogs, auditLog)
 	}
-	
+
 	return auditLogs, rows.Err()
 }

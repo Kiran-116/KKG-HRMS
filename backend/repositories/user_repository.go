@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -11,14 +12,14 @@ import (
 )
 
 type UserRepository interface {
-	Create(user *models.User) error
-	GetByID(id uuid.UUID) (*models.User, error)
-	GetByEmail(email string) (*models.User, error)
-	Update(user *models.User) error
-	Delete(id uuid.UUID) error
-	List(limit, offset int) ([]*models.User, error)
-	ListAdmins() ([]*models.User, error)
-	Count() (int, error)
+	Create(ctx context.Context, user *models.User) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	Update(ctx context.Context, user *models.User) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	List(ctx context.Context, limit, offset int) ([]*models.User, error)
+	ListAdmins(ctx context.Context) ([]*models.User, error)
+	Count(ctx context.Context) (int, error)
 }
 
 type userRepository struct {
@@ -31,14 +32,15 @@ func NewUserRepository() UserRepository {
 	}
 }
 
-func (r *userRepository) Create(user *models.User) error {
+func (r *userRepository) Create(ctx context.Context, user *models.User) error {
 	query := `
 		INSERT INTO users (id, name, email, password_hash, role, department, designation, joining_date, salary, is_active)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING created_at, updated_at
 	`
 
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(
+		ctx,
 		query,
 		user.ID,
 		user.Name,
@@ -55,7 +57,7 @@ func (r *userRepository) Create(user *models.User) error {
 	return err
 }
 
-func (r *userRepository) GetByID(id uuid.UUID) (*models.User, error) {
+func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	user := &models.User{}
 	query := `
 		SELECT id, name, email, password_hash, role, department, designation, 
@@ -64,7 +66,7 @@ func (r *userRepository) GetByID(id uuid.UUID) (*models.User, error) {
 		WHERE id = $1
 	`
 
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
@@ -86,7 +88,7 @@ func (r *userRepository) GetByID(id uuid.UUID) (*models.User, error) {
 	return user, err
 }
 
-func (r *userRepository) GetByEmail(email string) (*models.User, error) {
+func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	user := &models.User{}
 	query := `
 		SELECT id, name, email, password_hash, role, department, designation, 
@@ -95,7 +97,7 @@ func (r *userRepository) GetByEmail(email string) (*models.User, error) {
 		WHERE email = $1
 	`
 
-	err := r.db.QueryRow(query, email).Scan(
+	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
@@ -117,7 +119,7 @@ func (r *userRepository) GetByEmail(email string) (*models.User, error) {
 	return user, err
 }
 
-func (r *userRepository) Update(user *models.User) error {
+func (r *userRepository) Update(ctx context.Context, user *models.User) error {
 	query := `
 		UPDATE users
 		SET name = $2, email = $3, role = $4, department = $5, designation = $6,
@@ -126,7 +128,8 @@ func (r *userRepository) Update(user *models.User) error {
 		RETURNING updated_at
 	`
 
-	return r.db.QueryRow(
+	return r.db.QueryRowContext(
+		ctx,
 		query,
 		user.ID,
 		user.Name,
@@ -140,9 +143,9 @@ func (r *userRepository) Update(user *models.User) error {
 	).Scan(&user.UpdatedAt)
 }
 
-func (r *userRepository) Delete(id uuid.UUID) error {
+func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `UPDATE users SET is_active = false WHERE id = $1`
-	result, err := r.db.Exec(query, id)
+	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}
@@ -159,7 +162,7 @@ func (r *userRepository) Delete(id uuid.UUID) error {
 	return nil
 }
 
-func (r *userRepository) List(limit, offset int) ([]*models.User, error) {
+func (r *userRepository) List(ctx context.Context, limit, offset int) ([]*models.User, error) {
 	query := `
 		SELECT id, name, email, role, department, designation, 
 		       joining_date, salary, is_active, created_at, updated_at
@@ -169,7 +172,7 @@ func (r *userRepository) List(limit, offset int) ([]*models.User, error) {
 		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := r.db.Query(query, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -207,14 +210,14 @@ func (r *userRepository) List(limit, offset int) ([]*models.User, error) {
 	return users, rows.Err()
 }
 
-func (r *userRepository) Count() (int, error) {
+func (r *userRepository) Count(ctx context.Context) (int, error) {
 	var count int
 	query := `SELECT COUNT(*) FROM users WHERE is_active = true`
-	err := r.db.QueryRow(query).Scan(&count)
+	err := r.db.QueryRowContext(ctx, query).Scan(&count)
 	return count, err
 }
 
-func (r *userRepository) ListAdmins() ([]*models.User, error) {
+func (r *userRepository) ListAdmins(ctx context.Context) ([]*models.User, error) {
 	query := `
 		SELECT id, name, email, role, department, designation,
 		       joining_date, salary, is_active, created_at, updated_at
@@ -223,7 +226,7 @@ func (r *userRepository) ListAdmins() ([]*models.User, error) {
 		ORDER BY created_at ASC
 	`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"hrms/websocket"
 	"time"
@@ -12,12 +13,12 @@ import (
 )
 
 type LeaveService interface {
-	ApplyLeave(userID uuid.UUID, req *models.ApplyLeaveRequest) (*models.Leave, error)
-	GetByUserID(userID uuid.UUID, page, limit int) ([]*models.Leave, error)
-	GetAll(page, limit int, status *string) ([]*models.Leave, error)
-	ApproveLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*models.Leave, error)
-	RejectLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*models.Leave, error)
-	GetByID(id uuid.UUID) (*models.Leave, error)
+	ApplyLeave(ctx context.Context, userID uuid.UUID, req *models.ApplyLeaveRequest) (*models.Leave, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, page, limit int) ([]*models.Leave, error)
+	GetAll(ctx context.Context, page, limit int, status *string) ([]*models.Leave, error)
+	ApproveLeave(ctx context.Context, leaveID uuid.UUID, approvedBy uuid.UUID) (*models.Leave, error)
+	RejectLeave(ctx context.Context, leaveID uuid.UUID, approvedBy uuid.UUID) (*models.Leave, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Leave, error)
 }
 
 type leaveService struct {
@@ -41,7 +42,7 @@ func NewLeaveService(
 	}
 }
 
-func (s *leaveService) ApplyLeave(userID uuid.UUID, req *models.ApplyLeaveRequest) (*models.Leave, error) {
+func (s *leaveService) ApplyLeave(ctx context.Context, userID uuid.UUID, req *models.ApplyLeaveRequest) (*models.Leave, error) {
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
 		return nil, errors.New("invalid start date format")
@@ -71,16 +72,16 @@ func (s *leaveService) ApplyLeave(userID uuid.UUID, req *models.ApplyLeaveReques
 		UpdatedAt: time.Now(),
 	}
 
-	if err := s.leaveRepo.Create(leave); err != nil {
+	if err := s.leaveRepo.Create(ctx, leave); err != nil {
 		return nil, errors.New("failed to apply leave")
 	}
 
 	// Notify all admins about new leave request
 	if s.notificationService != nil && s.userRepo != nil {
-		admins, err := s.userRepo.ListAdmins()
+		admins, err := s.userRepo.ListAdmins(ctx)
 		if err == nil {
 			employeeName := "An employee"
-			if u, err := s.userRepo.GetByID(userID); err == nil && u != nil && u.Name != "" {
+			if u, err := s.userRepo.GetByID(ctx, userID); err == nil && u != nil && u.Name != "" {
 				employeeName = u.Name
 			}
 
@@ -91,7 +92,7 @@ func (s *leaveService) ApplyLeave(userID uuid.UUID, req *models.ApplyLeaveReques
 				if admin == nil {
 					continue
 				}
-				_, _ = s.notificationService.CreateNotification(admin.ID, title, msg, models.NotificationTypeInfo)
+				_, _ = s.notificationService.CreateNotification(ctx, admin.ID, title, msg, models.NotificationTypeInfo)
 			}
 		}
 	}
@@ -99,7 +100,7 @@ func (s *leaveService) ApplyLeave(userID uuid.UUID, req *models.ApplyLeaveReques
 	return leave, nil
 }
 
-func (s *leaveService) GetByUserID(userID uuid.UUID, page, limit int) ([]*models.Leave, error) {
+func (s *leaveService) GetByUserID(ctx context.Context, userID uuid.UUID, page, limit int) ([]*models.Leave, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -111,10 +112,10 @@ func (s *leaveService) GetByUserID(userID uuid.UUID, page, limit int) ([]*models
 	}
 
 	offset := (page - 1) * limit
-	return s.leaveRepo.GetByUserID(userID, limit, offset)
+	return s.leaveRepo.GetByUserID(ctx, userID, limit, offset)
 }
 
-func (s *leaveService) GetAll(page, limit int, status *string) ([]*models.Leave, error) {
+func (s *leaveService) GetAll(ctx context.Context, page, limit int, status *string) ([]*models.Leave, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -126,11 +127,11 @@ func (s *leaveService) GetAll(page, limit int, status *string) ([]*models.Leave,
 	}
 
 	offset := (page - 1) * limit
-	return s.leaveRepo.GetAll(limit, offset, status)
+	return s.leaveRepo.GetAll(ctx, limit, offset, status)
 }
 
-func (s *leaveService) ApproveLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*models.Leave, error) {
-	leave, err := s.leaveRepo.GetByID(leaveID)
+func (s *leaveService) ApproveLeave(ctx context.Context, leaveID uuid.UUID, approvedBy uuid.UUID) (*models.Leave, error) {
+	leave, err := s.leaveRepo.GetByID(ctx, leaveID)
 	if err != nil {
 		return nil, errors.New("leave not found")
 	}
@@ -142,13 +143,14 @@ func (s *leaveService) ApproveLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*m
 	leave.Status = models.LeaveStatusApproved
 	leave.ApprovedBy = &approvedBy
 
-	if err := s.leaveRepo.Update(leave); err != nil {
+	if err := s.leaveRepo.Update(ctx, leave); err != nil {
 		return nil, errors.New("failed to approve leave")
 	}
 
 	// Notify employee
 	if s.notificationService != nil {
 		_, _ = s.notificationService.CreateNotification(
+			ctx,
 			leave.UserID,
 			"Leave Approved",
 			"Your leave request has been approved.",
@@ -171,8 +173,8 @@ func (s *leaveService) ApproveLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*m
 	return leave, nil
 }
 
-func (s *leaveService) RejectLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*models.Leave, error) {
-	leave, err := s.leaveRepo.GetByID(leaveID)
+func (s *leaveService) RejectLeave(ctx context.Context, leaveID uuid.UUID, approvedBy uuid.UUID) (*models.Leave, error) {
+	leave, err := s.leaveRepo.GetByID(ctx, leaveID)
 	if err != nil {
 		return nil, errors.New("leave not found")
 	}
@@ -184,13 +186,14 @@ func (s *leaveService) RejectLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*mo
 	leave.Status = models.LeaveStatusRejected
 	leave.ApprovedBy = &approvedBy
 
-	if err := s.leaveRepo.Update(leave); err != nil {
+	if err := s.leaveRepo.Update(ctx, leave); err != nil {
 		return nil, errors.New("failed to reject leave")
 	}
 
 	// Notify employee
 	if s.notificationService != nil {
 		_, _ = s.notificationService.CreateNotification(
+			ctx,
 			leave.UserID,
 			"Leave Rejected",
 			"Your leave request has been rejected.",
@@ -213,6 +216,6 @@ func (s *leaveService) RejectLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*mo
 	return leave, nil
 }
 
-func (s *leaveService) GetByID(id uuid.UUID) (*models.Leave, error) {
-	return s.leaveRepo.GetByID(id)
+func (s *leaveService) GetByID(ctx context.Context, id uuid.UUID) (*models.Leave, error) {
+	return s.leaveRepo.GetByID(ctx, id)
 }

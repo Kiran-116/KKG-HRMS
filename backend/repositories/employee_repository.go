@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -11,9 +12,9 @@ import (
 )
 
 type EmployeeRepository interface {
-	List(limit, offset int) ([]*models.Employee, error)
-	GetByID(id uuid.UUID) (*models.Employee, error)
-	Count() (int, error)
+	List(ctx context.Context, limit, offset int) ([]*models.Employee, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Employee, error)
+	Count(ctx context.Context) (int, error)
 }
 
 type employeeRepository struct {
@@ -26,7 +27,7 @@ func NewEmployeeRepository() EmployeeRepository {
 	}
 }
 
-func (r *employeeRepository) List(limit, offset int) ([]*models.Employee, error) {
+func (r *employeeRepository) List(ctx context.Context, limit, offset int) ([]*models.Employee, error) {
 	query := `
 		SELECT id, name, email, role, department, designation, 
 		       joining_date, salary, is_active, created_at, updated_at
@@ -36,7 +37,7 @@ func (r *employeeRepository) List(limit, offset int) ([]*models.Employee, error)
 		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := r.db.Query(query, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func (r *employeeRepository) List(limit, offset int) ([]*models.Employee, error)
 	return employees, rows.Err()
 }
 
-func (r *employeeRepository) GetByID(id uuid.UUID) (*models.Employee, error) {
+func (r *employeeRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Employee, error) {
 	emp := &models.Employee{}
 	query := `
 		SELECT id, name, email, role, department, designation, 
@@ -84,7 +85,7 @@ func (r *employeeRepository) GetByID(id uuid.UUID) (*models.Employee, error) {
 	`
 
 	var joiningDate sql.NullTime
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&emp.ID,
 		&emp.Name,
 		&emp.Email,
@@ -112,9 +113,9 @@ func (r *employeeRepository) GetByID(id uuid.UUID) (*models.Employee, error) {
 	return emp, nil
 }
 
-func (r *employeeRepository) Count() (int, error) {
+func (r *employeeRepository) Count(ctx context.Context) (int, error) {
 	var count int
 	query := `SELECT COUNT(*) FROM users WHERE is_active = true`
-	err := r.db.QueryRow(query).Scan(&count)
+	err := r.db.QueryRowContext(ctx, query).Scan(&count)
 	return count, err
 }

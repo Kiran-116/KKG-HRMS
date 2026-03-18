@@ -40,7 +40,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.authService.Register(&req)
+	response, err := c.authService.Register(ctx.Request.Context(), &req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Registration failed",
@@ -72,7 +72,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	response, err := c.authService.Login(&req)
+	response, err := c.authService.Login(ctx.Request.Context(), &req)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "Authentication failed",
@@ -112,7 +112,7 @@ func (c *AuthController) GetMe(ctx *gin.Context) {
 		return
 	}
 
-	user, err := c.authService.GetUserByID(id)
+	user, err := c.authService.GetUserByID(ctx.Request.Context(), id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"error":   "Not found",

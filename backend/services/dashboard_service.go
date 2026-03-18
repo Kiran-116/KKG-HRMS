@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -11,8 +12,8 @@ import (
 )
 
 type DashboardService interface {
-	GetAdminDashboard() (map[string]interface{}, error)
-	GetEmployeeDashboard(userID uuid.UUID) (map[string]interface{}, error)
+	GetAdminDashboard(ctx context.Context) (map[string]interface{}, error)
+	GetEmployeeDashboard(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error)
 }
 
 type dashboardService struct {
@@ -25,18 +26,18 @@ func NewDashboardService() DashboardService {
 	}
 }
 
-func (s *dashboardService) GetAdminDashboard() (map[string]interface{}, error) {
+func (s *dashboardService) GetAdminDashboard(ctx context.Context) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
 	// Total employees
 	var totalEmployees int
-	s.db.QueryRow("SELECT COUNT(*) FROM users WHERE is_active = true").Scan(&totalEmployees)
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE is_active = true").Scan(&totalEmployees)
 	result["total_employees"] = totalEmployees
 
 	// Present employees today
 	today := time.Now().Format("2006-01-02")
 	var presentToday int
-	s.db.QueryRow(`
+	s.db.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT user_id) 
 		FROM attendance 
 		WHERE date = $1 AND status IN ('present', 'late', 'half_day')
@@ -48,11 +49,11 @@ func (s *dashboardService) GetAdminDashboard() (map[string]interface{}, error) {
 
 	// Pending leave requests
 	var pendingLeaves int
-	s.db.QueryRow("SELECT COUNT(*) FROM leaves WHERE status = 'pending'").Scan(&pendingLeaves)
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM leaves WHERE status = 'pending'").Scan(&pendingLeaves)
 	result["pending_leaves"] = pendingLeaves
 
 	// Recent activities (last 10 audit logs)
-	rows, _ := s.db.Query(`
+	rows, _ := s.db.QueryContext(ctx, `
 		SELECT action, entity_type, created_at 
 		FROM audit_logs 
 		ORDER BY created_at DESC 
@@ -77,7 +78,7 @@ func (s *dashboardService) GetAdminDashboard() (map[string]interface{}, error) {
 	currentMonth := int(time.Now().Month())
 	currentYear := time.Now().Year()
 	var payrollTotal float64
-	s.db.QueryRow(`
+	s.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(net_salary), 0) 
 		FROM salaries 
 		WHERE month = $1 AND year = $2
@@ -89,7 +90,7 @@ func (s *dashboardService) GetAdminDashboard() (map[string]interface{}, error) {
 	}
 
 	// Attendance trend (last 30 days)
-	attendanceTrendRows, _ := s.db.Query(`
+	attendanceTrendRows, _ := s.db.QueryContext(ctx, `
 		SELECT date, 
 		       COUNT(*) FILTER (WHERE status IN ('present', 'late', 'half_day')) as present,
 		       COUNT(*) FILTER (WHERE status = 'absent') as absent
@@ -120,7 +121,7 @@ func (s *dashboardService) GetAdminDashboard() (map[string]interface{}, error) {
 		startMonth += 12
 		startYear--
 	}
-	payrollTrendRows, _ := s.db.Query(`
+	payrollTrendRows, _ := s.db.QueryContext(ctx, `
 		SELECT month, year, COALESCE(SUM(net_salary), 0) as total
 		FROM salaries
 		WHERE (year = $1 AND month >= $2) OR (year = $3 AND month <= $4)
@@ -146,14 +147,14 @@ func (s *dashboardService) GetAdminDashboard() (map[string]interface{}, error) {
 	return result, nil
 }
 
-func (s *dashboardService) GetEmployeeDashboard(userID uuid.UUID) (map[string]interface{}, error) {
+func (s *dashboardService) GetEmployeeDashboard(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
 	// Attendance summary (current month)
 	currentMonth := int(time.Now().Month())
 	currentYear := time.Now().Year()
 	var presentDays, absentDays int
-	s.db.QueryRow(`
+	s.db.QueryRowContext(ctx, `
 		SELECT 
 			COUNT(*) FILTER (WHERE status IN ('present', 'late', 'half_day')) as present,
 			COUNT(*) FILTER (WHERE status = 'absent') as absent
@@ -169,7 +170,7 @@ func (s *dashboardService) GetEmployeeDashboard(userID uuid.UUID) (map[string]in
 
 	// Leave balance (pending + approved leaves this year)
 	var leaveBalance int
-	s.db.QueryRow(`
+	s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) 
 		FROM leaves 
 		WHERE user_id = $1 AND status IN ('pending', 'approved') AND EXTRACT(YEAR FROM start_date) = $2
@@ -178,7 +179,7 @@ func (s *dashboardService) GetEmployeeDashboard(userID uuid.UUID) (map[string]in
 
 	// Salary summary (latest)
 	var latestSalary models.Salary
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT id, user_id, base_salary, bonus, deductions, net_salary, month, year, created_at, updated_at
 		FROM salaries
 		WHERE user_id = $1
@@ -205,7 +206,7 @@ func (s *dashboardService) GetEmployeeDashboard(userID uuid.UUID) (map[string]in
 
 	// Unread notifications count
 	var unreadCount int
-	s.db.QueryRow(`
+	s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) 
 		FROM notifications 
 		WHERE user_id = $1 AND is_read = false
@@ -213,7 +214,7 @@ func (s *dashboardService) GetEmployeeDashboard(userID uuid.UUID) (map[string]in
 	result["unread_notifications"] = unreadCount
 
 	// Attendance trend (last 7 days)
-	attendanceTrendRows, _ := s.db.Query(`
+	attendanceTrendRows, _ := s.db.QueryContext(ctx, `
 		SELECT date, 
 		       CASE WHEN status IN ('present', 'late', 'half_day') THEN 1 ELSE 0 END as present
 		FROM attendance
