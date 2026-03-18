@@ -3,9 +3,11 @@ import api from './api';
 export interface AuditLog {
   id: string;
   user_id?: string;
+  user_name?: string;
   action: string;
   entity_type: string;
   entity_id?: string;
+  description?: string;
   metadata?: Record<string, any>;
   ip_address?: string;
   user_agent?: string;

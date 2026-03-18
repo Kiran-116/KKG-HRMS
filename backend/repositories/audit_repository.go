@@ -29,8 +29,8 @@ func (r *auditRepository) Create(auditLog *models.AuditLog) error {
 	metadataJSON, _ := json.Marshal(auditLog.Metadata)
 	
 	query := `
-		INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, metadata, ip_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, description, metadata, ip_address, user_agent)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 	
 	_, err := r.db.Exec(
@@ -40,6 +40,7 @@ func (r *auditRepository) Create(auditLog *models.AuditLog) error {
 		auditLog.Action,
 		auditLog.EntityType,
 		auditLog.EntityID,
+		auditLog.Description,
 		metadataJSON,
 		auditLog.IPAddress,
 		auditLog.UserAgent,
@@ -50,25 +51,26 @@ func (r *auditRepository) Create(auditLog *models.AuditLog) error {
 
 func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error) {
 	query := `
-		SELECT id, user_id, action, entity_type, entity_id, metadata, ip_address, user_agent, created_at
-		FROM audit_logs
+		SELECT a.id, a.user_id, u.name as user_name, a.action, a.entity_type, a.entity_id, a.description, a.metadata, a.ip_address, a.user_agent, a.created_at
+		FROM audit_logs a
+		LEFT JOIN users u ON a.user_id = u.id
 		WHERE 1=1
 	`
 	args := []interface{}{}
 	argPos := 1
 	
 	if userID != nil {
-		query += ` AND user_id = $` + string(rune('0'+argPos))
+		query += ` AND a.user_id = $` + string(rune('0'+argPos))
 		args = append(args, *userID)
 		argPos++
 	}
 	if action != nil {
-		query += ` AND action = $` + string(rune('0'+argPos))
+		query += ` AND a.action = $` + string(rune('0'+argPos))
 		args = append(args, *action)
 		argPos++
 	}
 	
-	query += ` ORDER BY created_at DESC LIMIT $` + string(rune('0'+argPos)) + ` OFFSET $` + string(rune('0'+argPos+1))
+	query += ` ORDER BY a.created_at DESC LIMIT $` + string(rune('0'+argPos)) + ` OFFSET $` + string(rune('0'+argPos+1))
 	args = append(args, limit, offset)
 	
 	rows, err := r.db.Query(query, args...)
@@ -81,14 +83,18 @@ func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *s
 	for rows.Next() {
 		auditLog := &models.AuditLog{}
 		var userID, entityID sql.NullString
+		var userName sql.NullString
+		var description sql.NullString
 		var metadataJSON []byte
 		
 		err := rows.Scan(
 			&auditLog.ID,
 			&userID,
+			&userName,
 			&auditLog.Action,
 			&auditLog.EntityType,
 			&entityID,
+			&description,
 			&metadataJSON,
 			&auditLog.IPAddress,
 			&auditLog.UserAgent,
@@ -102,6 +108,12 @@ func (r *auditRepository) GetAll(limit, offset int, userID *uuid.UUID, action *s
 			if id, err := uuid.Parse(userID.String); err == nil {
 				auditLog.UserID = &id
 			}
+		}
+		if userName.Valid {
+			auditLog.UserName = &userName.String
+		}
+		if description.Valid {
+			auditLog.Description = &description.String
 		}
 		if entityID.Valid {
 			if id, err := uuid.Parse(entityID.String); err == nil {

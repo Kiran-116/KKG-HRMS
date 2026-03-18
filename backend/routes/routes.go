@@ -16,11 +16,19 @@ func SetupRoutes(router *gin.Engine) {
 		// Initialize repositories
 		userRepo := repositories.NewUserRepository()
 
+		// Initialize audit service early (needed for middleware)
+		auditRepo := repositories.NewAuditRepository()
+		auditService := services.NewAuditService(auditRepo)
+
 		// Initialize services
 		authService := services.NewAuthService(userRepo)
 
 		// Initialize controllers
 		authController := controllers.NewAuthController(authService)
+
+		// Apply audit middleware to all API routes (after auth middleware will be applied per route)
+		// This will capture all POST/PUT/DELETE requests
+		api.Use(middleware.AuditMiddleware(auditService))
 
 		// Auth routes
 		auth := api.Group("/auth")
@@ -106,9 +114,7 @@ func SetupRoutes(router *gin.Engine) {
 			dashboard.GET("/employee", middleware.AuthMiddleware(), dashboardController.GetEmployeeDashboard)
 		}
 
-		// Audit routes
-		auditRepo := repositories.NewAuditRepository()
-		auditService := services.NewAuditService(auditRepo)
+		// Audit routes (auditService already initialized above)
 		auditController := controllers.NewAuditController(auditService)
 		audit := api.Group("/audit-logs")
 		{

@@ -10,7 +10,7 @@ import (
 )
 
 type AuditService interface {
-	Log(action, entityType string, entityID *uuid.UUID, userID *uuid.UUID, metadata map[string]interface{}, ipAddress, userAgent string) error
+	Log(action, entityType string, entityID *uuid.UUID, userID *uuid.UUID, description string, metadata map[string]interface{}, ipAddress, userAgent string) error
 	GetAll(page, limit int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error)
 }
 
@@ -24,17 +24,23 @@ func NewAuditService(auditRepo repositories.AuditRepository) AuditService {
 	}
 }
 
-func (s *auditService) Log(action, entityType string, entityID *uuid.UUID, userID *uuid.UUID, metadata map[string]interface{}, ipAddress, userAgent string) error {
+func (s *auditService) Log(action, entityType string, entityID *uuid.UUID, userID *uuid.UUID, description string, metadata map[string]interface{}, ipAddress, userAgent string) error {
+	var descPtr *string
+	if description != "" {
+		descPtr = &description
+	}
+
 	auditLog := &models.AuditLog{
-		ID:         uuid.New(),
-		UserID:     userID,
-		Action:     action,
-		EntityType: entityType,
-		EntityID:   entityID,
-		Metadata:   metadata,
-		IPAddress:  ipAddress,
-		UserAgent:  userAgent,
-		CreatedAt:  time.Now(),
+		ID:          uuid.New(),
+		UserID:      userID,
+		Action:      action,
+		EntityType:  entityType,
+		EntityID:    entityID,
+		Description: descPtr,
+		Metadata:    metadata,
+		IPAddress:   ipAddress,
+		UserAgent:   userAgent,
+		CreatedAt:   time.Now(),
 	}
 
 	return s.auditRepo.Create(auditLog)
