@@ -17,6 +17,7 @@ type UserRepository interface {
 	Update(user *models.User) error
 	Delete(id uuid.UUID) error
 	List(limit, offset int) ([]*models.User, error)
+	ListAdmins() ([]*models.User, error)
 	Count() (int, error)
 }
 
@@ -211,4 +212,51 @@ func (r *userRepository) Count() (int, error) {
 	query := `SELECT COUNT(*) FROM users WHERE is_active = true`
 	err := r.db.QueryRow(query).Scan(&count)
 	return count, err
+}
+
+func (r *userRepository) ListAdmins() ([]*models.User, error) {
+	query := `
+		SELECT id, name, email, role, department, designation,
+		       joining_date, salary, is_active, created_at, updated_at
+		FROM users
+		WHERE is_active = true AND role = 'admin'
+		ORDER BY created_at ASC
+	`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]*models.User, 0)
+	for rows.Next() {
+		user := &models.User{}
+		var joiningDate sql.NullTime
+
+		err := rows.Scan(
+			&user.ID,
+			&user.Name,
+			&user.Email,
+			&user.Role,
+			&user.Department,
+			&user.Designation,
+			&joiningDate,
+			&user.Salary,
+			&user.IsActive,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if joiningDate.Valid {
+			user.JoiningDate = &joiningDate.Time
+		}
+
+		users = append(users, user)
+	}
+
+	return users, rows.Err()
 }

@@ -1,15 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { leaveService, Leave } from '../../services/leaveService';
+import { toast } from 'react-toastify';
+import { useWebSocket } from '../../contexts/WebSocketContext';
 
 const LeaveHistoryPage: React.FC = () => {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const { lastMessage } = useWebSocket();
 
   useEffect(() => {
     loadLeaves();
   }, [page]);
+
+  useEffect(() => {
+    if (lastMessage?.type === 'leave_update' && lastMessage.payload?.leave_id) {
+      const leaveId = lastMessage.payload.leave_id;
+      const status = lastMessage.payload.status;
+      setLeaves((prev) =>
+        prev.map((l) => (l.id === leaveId ? { ...l, status } : l))
+      );
+      toast.info(`Leave status updated: ${status}`);
+    }
+  }, [lastMessage]);
 
   const loadLeaves = async () => {
     try {

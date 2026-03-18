@@ -5,12 +5,18 @@ import (
 	"hrms/middleware"
 	"hrms/repositories"
 	"hrms/services"
+	"hrms/websocket"
 
 	"github.com/gin-gonic/gin"
 )
 
 // SetupRoutes configures all application routes
 func SetupRoutes(router *gin.Engine) {
+	// WebSocket hub + handler
+	wsHub := websocket.NewHub()
+	wsHandler := websocket.NewHandler(wsHub)
+	router.GET("/ws", wsHandler.HandleWebSocket)
+
 	api := router.Group("/api")
 	{
 		// Initialize repositories
@@ -62,7 +68,11 @@ func SetupRoutes(router *gin.Engine) {
 		}
 		// Leave routes
 		leaveRepo := repositories.NewLeaveRepository()
-		leaveService := services.NewLeaveService(leaveRepo)
+		// Notification service is needed by leave service for real-time updates
+		notificationRepo := repositories.NewNotificationRepository()
+		emailService := services.NewEmailService()
+		notificationService := services.NewNotificationService(notificationRepo, emailService, wsHub)
+		leaveService := services.NewLeaveService(leaveRepo, notificationService, wsHub, userRepo)
 		leaveController := controllers.NewLeaveController(leaveService)
 		leaves := api.Group("/leaves")
 		{
@@ -93,10 +103,7 @@ func SetupRoutes(router *gin.Engine) {
 			documents.GET("/:userId", middleware.AuthMiddleware(), middleware.RequireAdmin(), documentController.GetDocumentsByUserID)
 			documents.DELETE("/:id", middleware.AuthMiddleware(), documentController.DeleteDocument)
 		}
-		// Notification routes
-		notificationRepo := repositories.NewNotificationRepository()
-		emailService := services.NewEmailService()
-		notificationService := services.NewNotificationService(notificationRepo, emailService)
+		// Notification routes (notificationService already initialized above)
 		notificationController := controllers.NewNotificationController(notificationService)
 		notifications := api.Group("/notifications")
 		{

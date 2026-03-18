@@ -1,6 +1,7 @@
 package services
 
 import (
+	"hrms/websocket"
 	"time"
 
 	"hrms/models"
@@ -19,12 +20,14 @@ type NotificationService interface {
 type notificationService struct {
 	notificationRepo repositories.NotificationRepository
 	emailService     EmailService
+	hub              *websocket.Hub
 }
 
-func NewNotificationService(notificationRepo repositories.NotificationRepository, emailService EmailService) NotificationService {
+func NewNotificationService(notificationRepo repositories.NotificationRepository, emailService EmailService, hub *websocket.Hub) NotificationService {
 	return &notificationService{
 		notificationRepo: notificationRepo,
-		emailService:      emailService,
+		emailService:     emailService,
+		hub:              hub,
 	}
 }
 
@@ -49,6 +52,16 @@ func (s *notificationService) CreateNotification(userID uuid.UUID, title, messag
 		// Get user email from repository if needed
 		s.emailService.SendEmail("user@example.com", title, message)
 	}()
+
+	// Broadcast real-time notification
+	if s.hub != nil {
+		s.hub.BroadcastToUser(userID, websocket.Message{
+			Type: "notification",
+			Payload: websocket.NotificationPayload{
+				Notification: notification,
+			},
+		})
+	}
 
 	return notification, nil
 }

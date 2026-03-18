@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"hrms/websocket"
 	"time"
 
 	"hrms/models"
@@ -20,12 +21,23 @@ type LeaveService interface {
 }
 
 type leaveService struct {
-	leaveRepo repositories.LeaveRepository
+	leaveRepo           repositories.LeaveRepository
+	notificationService NotificationService
+	hub                 *websocket.Hub
+	userRepo            repositories.UserRepository
 }
 
-func NewLeaveService(leaveRepo repositories.LeaveRepository) LeaveService {
+func NewLeaveService(
+	leaveRepo repositories.LeaveRepository,
+	notificationService NotificationService,
+	hub *websocket.Hub,
+	userRepo repositories.UserRepository,
+) LeaveService {
 	return &leaveService{
-		leaveRepo: leaveRepo,
+		leaveRepo:           leaveRepo,
+		notificationService: notificationService,
+		hub:                 hub,
+		userRepo:            userRepo,
 	}
 }
 
@@ -61,6 +73,27 @@ func (s *leaveService) ApplyLeave(userID uuid.UUID, req *models.ApplyLeaveReques
 
 	if err := s.leaveRepo.Create(leave); err != nil {
 		return nil, errors.New("failed to apply leave")
+	}
+
+	// Notify all admins about new leave request
+	if s.notificationService != nil && s.userRepo != nil {
+		admins, err := s.userRepo.ListAdmins()
+		if err == nil {
+			employeeName := "An employee"
+			if u, err := s.userRepo.GetByID(userID); err == nil && u != nil && u.Name != "" {
+				employeeName = u.Name
+			}
+
+			title := "New Leave Request"
+			msg := employeeName + " applied for leave (" + req.StartDate + " to " + req.EndDate + ")."
+
+			for _, admin := range admins {
+				if admin == nil {
+					continue
+				}
+				_, _ = s.notificationService.CreateNotification(admin.ID, title, msg, models.NotificationTypeInfo)
+			}
+		}
 	}
 
 	return leave, nil
@@ -113,6 +146,28 @@ func (s *leaveService) ApproveLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*m
 		return nil, errors.New("failed to approve leave")
 	}
 
+	// Notify employee
+	if s.notificationService != nil {
+		_, _ = s.notificationService.CreateNotification(
+			leave.UserID,
+			"Leave Approved",
+			"Your leave request has been approved.",
+			"success",
+		)
+	}
+
+	// Broadcast leave update in real-time
+	if s.hub != nil {
+		s.hub.BroadcastToUser(leave.UserID, websocket.Message{
+			Type: "leave_update",
+			Payload: websocket.LeaveUpdatePayload{
+				LeaveID: leave.ID,
+				Status:  leave.Status,
+				Leave:   leave,
+			},
+		})
+	}
+
 	return leave, nil
 }
 
@@ -131,6 +186,28 @@ func (s *leaveService) RejectLeave(leaveID uuid.UUID, approvedBy uuid.UUID) (*mo
 
 	if err := s.leaveRepo.Update(leave); err != nil {
 		return nil, errors.New("failed to reject leave")
+	}
+
+	// Notify employee
+	if s.notificationService != nil {
+		_, _ = s.notificationService.CreateNotification(
+			leave.UserID,
+			"Leave Rejected",
+			"Your leave request has been rejected.",
+			"warning",
+		)
+	}
+
+	// Broadcast leave update in real-time
+	if s.hub != nil {
+		s.hub.BroadcastToUser(leave.UserID, websocket.Message{
+			Type: "leave_update",
+			Payload: websocket.LeaveUpdatePayload{
+				LeaveID: leave.ID,
+				Status:  leave.Status,
+				Leave:   leave,
+			},
+		})
 	}
 
 	return leave, nil

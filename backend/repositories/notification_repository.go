@@ -33,7 +33,7 @@ func (r *notificationRepository) Create(notification *models.Notification) error
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING created_at, updated_at
 	`
-	
+
 	err := r.db.QueryRow(
 		query,
 		notification.ID,
@@ -43,7 +43,7 @@ func (r *notificationRepository) Create(notification *models.Notification) error
 		notification.Type,
 		notification.IsRead,
 	).Scan(&notification.CreatedAt, &notification.UpdatedAt)
-	
+
 	return err
 }
 
@@ -55,14 +55,14 @@ func (r *notificationRepository) GetByUserID(userID uuid.UUID, limit, offset int
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
 	`
-	
+
 	rows, err := r.db.Query(query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
-	var notifications []*models.Notification
+
+	notifications := make([]*models.Notification, 0)
 	for rows.Next() {
 		notification := &models.Notification{}
 		err := rows.Scan(
@@ -80,7 +80,7 @@ func (r *notificationRepository) GetByUserID(userID uuid.UUID, limit, offset int
 		}
 		notifications = append(notifications, notification)
 	}
-	
+
 	return notifications, rows.Err()
 }
 
@@ -101,15 +101,15 @@ func (r *notificationRepository) MarkAsRead(id uuid.UUID, userID uuid.UUID) erro
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	
+
 	if rowsAffected == 0 {
 		return errors.New("notification not found")
 	}
-	
+
 	return nil
 }

@@ -1,14 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { notificationService, Notification } from '../../services/notificationService';
+import { useWebSocket } from '../../contexts/WebSocketContext';
 
 const NotificationListPage: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const { lastMessage } = useWebSocket();
 
   useEffect(() => {
     loadNotifications();
   }, [page]);
+
+  useEffect(() => {
+    if (lastMessage?.type === 'notification' && lastMessage.payload?.notification) {
+      setNotifications((prev) => [lastMessage.payload.notification, ...prev]);
+    }
+  }, [lastMessage]);
 
   const loadNotifications = async () => {
     try {

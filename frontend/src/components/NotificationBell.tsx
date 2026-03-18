@@ -1,15 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notificationService } from '../services/notificationService';
+import { useWebSocket } from '../contexts/WebSocketContext';
 
 const NotificationBell: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
+  const { lastMessage } = useWebSocket();
 
   useEffect(() => {
     loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 30000); // Refresh every 30 seconds
+    // Keep a lightweight fallback refresh in case WS is down
+    const interval = setInterval(loadUnreadCount, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (lastMessage?.type === 'notification') {
+      setUnreadCount((c) => c + 1);
+    }
+  }, [lastMessage]);
 
   const loadUnreadCount = async () => {
     try {
