@@ -60,7 +60,7 @@ func (s *dashboardService) GetAdminDashboard(ctx context.Context) (map[string]in
 		LIMIT 10
 	`)
 	defer rows.Close()
-	
+
 	var activities []map[string]interface{}
 	for rows.Next() {
 		var action, entityType string
@@ -100,7 +100,7 @@ func (s *dashboardService) GetAdminDashboard(ctx context.Context) (map[string]in
 		ORDER BY date ASC
 	`)
 	defer attendanceTrendRows.Close()
-	
+
 	var attendanceTrend []map[string]interface{}
 	for attendanceTrendRows.Next() {
 		var date time.Time
@@ -130,7 +130,7 @@ func (s *dashboardService) GetAdminDashboard(ctx context.Context) (map[string]in
 		LIMIT 6
 	`, currentYear, startMonth, startYear, currentMonth)
 	defer payrollTrendRows.Close()
-	
+
 	var payrollTrend []map[string]interface{}
 	for payrollTrendRows.Next() {
 		var month, year int
@@ -222,7 +222,7 @@ func (s *dashboardService) GetEmployeeDashboard(ctx context.Context, userID uuid
 		ORDER BY date ASC
 	`, userID)
 	defer attendanceTrendRows.Close()
-	
+
 	var attendanceTrend []map[string]interface{}
 	for attendanceTrendRows.Next() {
 		var date time.Time

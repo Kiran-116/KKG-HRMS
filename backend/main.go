@@ -12,6 +12,7 @@ import (
 	"hrms/routes"
 
 	"github.com/gin-gonic/gin"
+	nrgin "github.com/newrelic/go-agent/v3/integrations/nrgin"
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
@@ -44,6 +45,8 @@ func main() {
 			newrelic.ConfigAppLogForwardingEnabled(true),
 			newrelic.ConfigAIMonitoringEnabled(config.AppConfig.NewRelic.AIMonitoringEnabled),
 			newrelic.ConfigCustomInsightsEventsMaxSamplesStored(config.AppConfig.NewRelic.CustomInsightsEventsMaxSamplesStored),
+			newrelic.ConfigDistributedTracerEnabled(true),
+			newrelic.ConfigDebugLogger(os.Stdout),
 		)
 		if err != nil {
 			log.Printf("New Relic initialization failed; continuing without New Relic: %v", err)
@@ -79,7 +82,9 @@ func setupRouter(nrApp *newrelic.Application) *gin.Engine {
 
 	// Global middleware
 	// New Relic middleware should be first to capture the full request lifecycle.
-	router.Use(middleware.NewRelicMiddleware(nrApp))
+	if nrApp != nil {
+		router.Use(nrgin.Middleware(nrApp))
+	}
 	router.Use(middleware.Recovery())
 	router.Use(middleware.RequestLogger())
 	router.Use(middleware.SetupCORS())

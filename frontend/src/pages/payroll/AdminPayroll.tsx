@@ -104,7 +104,7 @@ const AdminPayrollPage: React.FC = () => {
                 className="w-full px-4 py-2 border rounded-md"
               >
                 <option value="">Select Employee</option>
-                {employees.map((emp) => (
+                {employees?.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.name} ({emp.email})
                   </option>
@@ -207,7 +207,7 @@ const AdminPayrollPage: React.FC = () => {
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Employees</h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {employees.map((emp) => (
+              {employees?.map((emp) => (
                 <button
                   key={emp.id}
                   onClick={() => {
@@ -234,7 +234,7 @@ const AdminPayrollPage: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 Salary History - {selectedEmployee.name}
               </h2>
-              {salaries.length > 0 ? (
+              {salaries?.length > 0 ? (
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -256,7 +256,7 @@ const AdminPayrollPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {salaries.map((salary) => (
+                    {salaries?.map((salary) => (
                       <tr key={salary.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {salary.month}/{salary.year}

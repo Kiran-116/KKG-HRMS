@@ -35,7 +35,7 @@ func (r *leaveRepository) Create(ctx context.Context, leave *models.Leave) error
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING created_at, updated_at
 	`
-	
+
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
@@ -46,7 +46,7 @@ func (r *leaveRepository) Create(ctx context.Context, leave *models.Leave) error
 		leave.Reason,
 		leave.Status,
 	).Scan(&leave.CreatedAt, &leave.UpdatedAt)
-	
+
 	return err
 }
 
@@ -57,7 +57,7 @@ func (r *leaveRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Le
 		FROM leaves
 		WHERE id = $1
 	`
-	
+
 	var approvedBy sql.NullString
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&leave.ID,
@@ -70,20 +70,20 @@ func (r *leaveRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Le
 		&leave.CreatedAt,
 		&leave.UpdatedAt,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, errors.New("leave not found")
 	}
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if approvedBy.Valid {
 		if id, err := uuid.Parse(approvedBy.String); err == nil {
 			leave.ApprovedBy = &id
 		}
 	}
-	
+
 	return leave, nil
 }
 
@@ -95,18 +95,18 @@ func (r *leaveRepository) GetByUserID(ctx context.Context, userID uuid.UUID, lim
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
 	`
-	
+
 	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var leaves []*models.Leave
 	for rows.Next() {
 		leave := &models.Leave{}
 		var approvedBy sql.NullString
-		
+
 		err := rows.Scan(
 			&leave.ID,
 			&leave.UserID,
@@ -121,16 +121,16 @@ func (r *leaveRepository) GetByUserID(ctx context.Context, userID uuid.UUID, lim
 		if err != nil {
 			return nil, err
 		}
-		
+
 		if approvedBy.Valid {
 			if id, err := uuid.Parse(approvedBy.String); err == nil {
 				leave.ApprovedBy = &id
 			}
 		}
-		
+
 		leaves = append(leaves, leave)
 	}
-	
+
 	return leaves, rows.Err()
 }
 
@@ -143,28 +143,28 @@ func (r *leaveRepository) GetAll(ctx context.Context, limit, offset int, status 
 	`
 	args := []interface{}{}
 	argPos := 1
-	
+
 	if status != nil {
 		query += ` AND l.status = $` + string(rune('0'+argPos))
 		args = append(args, *status)
 		argPos++
 	}
-	
+
 	query += ` ORDER BY l.created_at DESC LIMIT $` + string(rune('0'+argPos)) + ` OFFSET $` + string(rune('0'+argPos+1))
 	args = append(args, limit, offset)
-	
+
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var leaves []*models.Leave
 	for rows.Next() {
 		leave := &models.Leave{}
 		var approvedBy sql.NullString
 		var userName sql.NullString
-		
+
 		err := rows.Scan(
 			&leave.ID,
 			&leave.UserID,
@@ -180,7 +180,7 @@ func (r *leaveRepository) GetAll(ctx context.Context, limit, offset int, status 
 		if err != nil {
 			return nil, err
 		}
-		
+
 		if userName.Valid {
 			leave.UserName = &userName.String
 		}
@@ -189,10 +189,10 @@ func (r *leaveRepository) GetAll(ctx context.Context, limit, offset int, status 
 				leave.ApprovedBy = &id
 			}
 		}
-		
+
 		leaves = append(leaves, leave)
 	}
-	
+
 	return leaves, rows.Err()
 }
 
@@ -203,7 +203,7 @@ func (r *leaveRepository) Update(ctx context.Context, leave *models.Leave) error
 		WHERE id = $1
 		RETURNING updated_at
 	`
-	
+
 	return r.db.QueryRowContext(
 		ctx,
 		query,

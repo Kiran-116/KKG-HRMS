@@ -117,9 +117,9 @@ func Load() error {
 			// Default license key is set for convenience in development; prefer environment variables in production.
 			LicenseKey: getEnv("NEW_RELIC_LICENSE_KEY", "b464afca85c37cb35b537d8c218c7892FFFFNRAL"),
 			AppName:    getEnv("NEW_RELIC_APP_NAME", "HRMS"),
-			Enabled:    getBoolEnv("NEW_RELIC_ENABLED", false),
+			Enabled:    getBoolEnv("NEW_RELIC_ENABLED", true),
 
-			AIMonitoringEnabled: getBoolEnv("NEW_RELIC_AI_MONITORING_ENABLED", false),
+			AIMonitoringEnabled: getBoolEnv("NEW_RELIC_AI_MONITORING_ENABLED", true),
 			CustomInsightsEventsMaxSamplesStored: getIntEnv(
 				"NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES",
 				10000,
