@@ -7,7 +7,7 @@ import PayrollChart from '../../components/dashboard/PayrollChart';
 const AdminDashboardPage: React.FC = () => {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState<'day' | 'month' | 'year'>('month');
+  const [range, setRange] = useState<'day' | 'month' | 'year'>('day');
 
   useEffect(() => {
     loadDashboard();

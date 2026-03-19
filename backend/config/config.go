@@ -102,7 +102,7 @@ func Load() error {
 			Host:            getEnv("DB_HOST", "localhost"),
 			Port:            getEnv("DB_PORT", "5432"),
 			User:            getEnv("DB_USER", "postgres"),
-			Password:        getEnv("DB_PASSWORD", "123456"),
+			Password:        getEnv("DB_PASSWORD", ""),
 			DBName:          getEnv("DB_NAME", "hrms"),
 			SSLMode:         getEnv("DB_SSLMODE", "disable"),
 			MaxOpenConns:    getIntEnv("DB_MAX_OPEN_CONNS", 25),
@@ -110,14 +110,13 @@ func Load() error {
 			ConnMaxLifetime: getDurationEnv("DB_CONN_MAX_LIFETIME", 5*time.Minute),
 		},
 		JWT: JWTConfig{
-			AccessTokenSecret:  getEnv("JWT_ACCESS_SECRET", "your-access-secret-key-change-in-production"),
-			RefreshTokenSecret: getEnv("JWT_REFRESH_SECRET", "your-refresh-secret-key-change-in-production"),
+			AccessTokenSecret:  getEnv("JWT_ACCESS_SECRET", ""),
+			RefreshTokenSecret: getEnv("JWT_REFRESH_SECRET", ""),
 			AccessTokenExpiry:  getDurationEnv("JWT_ACCESS_EXPIRY", 15*time.Minute),
 			RefreshTokenExpiry: getDurationEnv("JWT_REFRESH_EXPIRY", 7*24*time.Hour),
 		},
 		NewRelic: NewRelicConfig{
-			// Default license key is set for convenience in development; prefer environment variables in production.
-			LicenseKey: getEnv("NEW_RELIC_LICENSE_KEY", "b464afca85c37cb35b537d8c218c7892FFFFNRAL"),
+			LicenseKey: getEnv("NEW_RELIC_LICENSE_KEY", ""),
 			AppName:    getEnv("NEW_RELIC_APP_NAME", "HRMS"),
 			Enabled:    getBoolEnv("NEW_RELIC_ENABLED", true),
 
@@ -134,8 +133,8 @@ func Load() error {
 		SMTP: SMTPConfig{
 			Host:     getEnv("SMTP_HOST", "smtp.gmail.com"),
 			Port:     getIntEnv("SMTP_PORT", 587),
-			Username: getEnv("SMTP_USERNAME", "kirankumar2003g@gmail.com"),
-			Password: getEnv("SMTP_PASSWORD", "wrkp kvtt nxye gttu"),
+			Username: getEnv("SMTP_USERNAME", ""),
+			Password: getEnv("SMTP_PASSWORD", ""),
 			From:     getEnv("SMTP_FROM", "noreply@hrms.com"),
 			Enabled:  getBoolEnv("SMTP_ENABLED", true),
 		},
