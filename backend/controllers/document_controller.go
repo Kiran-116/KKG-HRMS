@@ -44,7 +44,7 @@ func (c *DocumentController) UploadDocument(ctx *gin.Context) {
 		return
 	}
 
-	document, err := c.documentService.UploadDocument(id, file, req.DocumentType)
+	document, err := c.documentService.UploadDocument(ctx.Request.Context(), id, file, req.DocumentType)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Upload failed",
@@ -64,7 +64,7 @@ func (c *DocumentController) GetMyDocuments(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 
-	documents, err := c.documentService.GetByUserID(id, page, limit)
+	documents, err := c.documentService.GetByUserID(ctx.Request.Context(), id, page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch documents",
@@ -90,7 +90,7 @@ func (c *DocumentController) GetDocumentsByUserID(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 
-	documents, err := c.documentService.GetByUserID(userID, page, limit)
+	documents, err := c.documentService.GetByUserID(ctx.Request.Context(), userID, page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch documents",
@@ -116,7 +116,7 @@ func (c *DocumentController) DeleteDocument(ctx *gin.Context) {
 	userID, _ := ctx.Get("user_id")
 	id := userID.(uuid.UUID)
 
-	if err := c.documentService.DeleteDocument(documentID, id); err != nil {
+	if err := c.documentService.DeleteDocument(ctx.Request.Context(), documentID, id); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to delete document",
 			"message": err.Error(),

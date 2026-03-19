@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,14 +17,14 @@ import (
 )
 
 type AIService interface {
-	ProcessHRQuery(userID uuid.UUID, query string) (string, error)
+	ProcessHRQuery(ctx context.Context, userID uuid.UUID, query string) (string, error)
 }
 
 type aiService struct {
-	userRepo     repositories.UserRepository
-	leaveRepo    repositories.LeaveRepository
+	userRepo       repositories.UserRepository
+	leaveRepo      repositories.LeaveRepository
 	attendanceRepo repositories.AttendanceRepository
-	salaryRepo  repositories.SalaryRepository
+	salaryRepo     repositories.SalaryRepository
 }
 
 func NewAIService(
@@ -33,19 +34,19 @@ func NewAIService(
 	salaryRepo repositories.SalaryRepository,
 ) AIService {
 	return &aiService{
-		userRepo:      userRepo,
-		leaveRepo:     leaveRepo,
+		userRepo:       userRepo,
+		leaveRepo:      leaveRepo,
 		attendanceRepo: attendanceRepo,
-		salaryRepo:    salaryRepo,
+		salaryRepo:     salaryRepo,
 	}
 }
 
-func (s *aiService) ProcessHRQuery(userID uuid.UUID, query string) (string, error) {
+func (s *aiService) ProcessHRQuery(ctx context.Context, userID uuid.UUID, query string) (string, error) {
 	query = strings.ToLower(query)
 
 	// Simple query parsing and response
 	if strings.Contains(query, "leave") || strings.Contains(query, "leaves") {
-		leaves, _ := s.leaveRepo.GetByUserID(userID, 10, 0)
+		leaves, _ := s.leaveRepo.GetByUserID(ctx, userID, 10, 0)
 		approvedCount := 0
 		pendingCount := 0
 		for _, leave := range leaves {
@@ -59,7 +60,7 @@ func (s *aiService) ProcessHRQuery(userID uuid.UUID, query string) (string, erro
 	}
 
 	if strings.Contains(query, "attendance") {
-		attendances, _ := s.attendanceRepo.GetByUserID(userID, 10, 0)
+		attendances, _ := s.attendanceRepo.GetByUserID(ctx, userID, 10, 0)
 		presentCount := 0
 		for _, att := range attendances {
 			if att.Status == "present" || att.Status == "late" {
@@ -70,7 +71,7 @@ func (s *aiService) ProcessHRQuery(userID uuid.UUID, query string) (string, erro
 	}
 
 	if strings.Contains(query, "salary") {
-		salaries, _ := s.salaryRepo.GetByUserID(userID, 1, 0)
+		salaries, _ := s.salaryRepo.GetByUserID(ctx, userID, 1, 0)
 		if len(salaries) > 0 {
 			latest := salaries[0]
 			return fmt.Sprintf("Your latest salary is $%.2f for %d/%d.", latest.NetSalary, latest.Month, latest.Year), nil

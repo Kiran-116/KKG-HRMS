@@ -32,7 +32,7 @@ func (c *SalaryController) CreateSalary(ctx *gin.Context) {
 		return
 	}
 
-	salary, err := c.salaryService.CreateSalary(&req)
+	salary, err := c.salaryService.CreateSalary(ctx.Request.Context(), &req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to create salary",
@@ -52,7 +52,7 @@ func (c *SalaryController) GetMySalary(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 
-	salaries, err := c.salaryService.GetByUserID(id, page, limit)
+	salaries, err := c.salaryService.GetByUserID(ctx.Request.Context(), id, page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch salary",
@@ -78,7 +78,7 @@ func (c *SalaryController) GetSalaryByUserID(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 
-	salaries, err := c.salaryService.GetByUserID(userID, page, limit)
+	salaries, err := c.salaryService.GetByUserID(ctx.Request.Context(), userID, page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch salary",

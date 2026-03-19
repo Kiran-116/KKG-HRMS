@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -11,10 +12,10 @@ import (
 )
 
 type NotificationRepository interface {
-	Create(notification *models.Notification) error
-	GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Notification, error)
-	GetUnreadCount(userID uuid.UUID) (int, error)
-	MarkAsRead(id uuid.UUID, userID uuid.UUID) error
+	Create(ctx context.Context, notification *models.Notification) error
+	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Notification, error)
+	GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error)
+	MarkAsRead(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 }
 
 type notificationRepository struct {
@@ -27,14 +28,15 @@ func NewNotificationRepository() NotificationRepository {
 	}
 }
 
-func (r *notificationRepository) Create(notification *models.Notification) error {
+func (r *notificationRepository) Create(ctx context.Context, notification *models.Notification) error {
 	query := `
 		INSERT INTO notifications (id, user_id, title, message, type, is_read)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING created_at, updated_at
 	`
 
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(
+		ctx,
 		query,
 		notification.ID,
 		notification.UserID,
@@ -47,7 +49,7 @@ func (r *notificationRepository) Create(notification *models.Notification) error
 	return err
 }
 
-func (r *notificationRepository) GetByUserID(userID uuid.UUID, limit, offset int) ([]*models.Notification, error) {
+func (r *notificationRepository) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Notification, error) {
 	query := `
 		SELECT id, user_id, title, message, type, is_read, created_at, updated_at
 		FROM notifications
@@ -56,7 +58,7 @@ func (r *notificationRepository) GetByUserID(userID uuid.UUID, limit, offset int
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(query, userID, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -84,20 +86,20 @@ func (r *notificationRepository) GetByUserID(userID uuid.UUID, limit, offset int
 	return notifications, rows.Err()
 }
 
-func (r *notificationRepository) GetUnreadCount(userID uuid.UUID) (int, error) {
+func (r *notificationRepository) GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int
 	query := `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false`
-	err := r.db.QueryRow(query, userID).Scan(&count)
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
 	return count, err
 }
 
-func (r *notificationRepository) MarkAsRead(id uuid.UUID, userID uuid.UUID) error {
+func (r *notificationRepository) MarkAsRead(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
 	query := `
 		UPDATE notifications
 		SET is_read = true, updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1 AND user_id = $2
 	`
-	result, err := r.db.Exec(query, id, userID)
+	result, err := r.db.ExecContext(ctx, query, id, userID)
 	if err != nil {
 		return err
 	}

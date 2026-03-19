@@ -2,13 +2,11 @@ package middleware
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"hrms/services"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -301,11 +299,8 @@ func AuditMiddleware(auditService services.AuditService) gin.HandlerFunc {
 					uid = &id
 				}
 			}
-			auditCtx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
-			defer cancel()
-
-			_ = auditService.Log(
-				auditCtx,
+			auditService.Log(
+				c.Request.Context(),
 				action,
 				normalizedEntityType,
 				entityID,

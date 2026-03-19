@@ -35,7 +35,7 @@ func (c *LeaveController) ApplyLeave(ctx *gin.Context) {
 		return
 	}
 
-	leave, err := c.leaveService.ApplyLeave(id, &req)
+	leave, err := c.leaveService.ApplyLeave(ctx.Request.Context(), id, &req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to apply leave",
@@ -55,7 +55,7 @@ func (c *LeaveController) GetMyLeaves(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 
-	leaves, err := c.leaveService.GetByUserID(id, page, limit)
+	leaves, err := c.leaveService.GetByUserID(ctx.Request.Context(), id, page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch leaves",
@@ -77,7 +77,7 @@ func (c *LeaveController) GetAllLeaves(ctx *gin.Context) {
 		status = &statusStr
 	}
 
-	leaves, err := c.leaveService.GetAll(page, limit, status)
+	leaves, err := c.leaveService.GetAll(ctx.Request.Context(), page, limit, status)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch leaves",
@@ -103,7 +103,7 @@ func (c *LeaveController) ApproveLeave(ctx *gin.Context) {
 	userID, _ := ctx.Get("user_id")
 	approvedBy := userID.(uuid.UUID)
 
-	leave, err := c.leaveService.ApproveLeave(leaveID, approvedBy)
+	leave, err := c.leaveService.ApproveLeave(ctx.Request.Context(), leaveID, approvedBy)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to approve leave",
@@ -129,7 +129,7 @@ func (c *LeaveController) RejectLeave(ctx *gin.Context) {
 	userID, _ := ctx.Get("user_id")
 	approvedBy := userID.(uuid.UUID)
 
-	leave, err := c.leaveService.RejectLeave(leaveID, approvedBy)
+	leave, err := c.leaveService.RejectLeave(ctx.Request.Context(), leaveID, approvedBy)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to reject leave",

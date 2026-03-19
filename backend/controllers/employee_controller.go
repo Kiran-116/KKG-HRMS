@@ -26,7 +26,7 @@ func (c *EmployeeController) ListEmployees(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 
-	response, err := c.employeeService.ListEmployees(page, limit)
+	response, err := c.employeeService.ListEmployees(ctx.Request.Context(), page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch employees",
@@ -49,7 +49,7 @@ func (c *EmployeeController) CreateEmployee(ctx *gin.Context) {
 		return
 	}
 
-	employee, err := c.employeeService.CreateEmployee(&req)
+	employee, err := c.employeeService.CreateEmployee(ctx.Request.Context(), &req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to create employee",
@@ -72,7 +72,7 @@ func (c *EmployeeController) GetEmployee(ctx *gin.Context) {
 		return
 	}
 
-	employee, err := c.employeeService.GetEmployee(id)
+	employee, err := c.employeeService.GetEmployee(ctx.Request.Context(), id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"error":   "Employee not found",
@@ -104,7 +104,7 @@ func (c *EmployeeController) UpdateEmployee(ctx *gin.Context) {
 		return
 	}
 
-	employee, err := c.employeeService.UpdateEmployee(id, &req)
+	employee, err := c.employeeService.UpdateEmployee(ctx.Request.Context(), id, &req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to update employee",
@@ -136,7 +136,7 @@ func (c *EmployeeController) GetMe(ctx *gin.Context) {
 		return
 	}
 
-	employee, err := c.employeeService.GetEmployee(id)
+	employee, err := c.employeeService.GetEmployee(ctx.Request.Context(), id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"error":   "Employee not found",

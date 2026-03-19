@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"time"
 
 	"hrms/models"
@@ -10,8 +11,8 @@ import (
 )
 
 type AuditService interface {
-	Log(action, entityType string, entityID *uuid.UUID, userID *uuid.UUID, description string, metadata map[string]interface{}, ipAddress, userAgent string) error
-	GetAll(page, limit int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error)
+	Log(ctx context.Context, action, entityType string, entityID *uuid.UUID, userID *uuid.UUID, description string, metadata map[string]interface{}, ipAddress, userAgent string) error
+	GetAll(ctx context.Context, page, limit int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error)
 }
 
 type auditService struct {
@@ -24,7 +25,7 @@ func NewAuditService(auditRepo repositories.AuditRepository) AuditService {
 	}
 }
 
-func (s *auditService) Log(action, entityType string, entityID *uuid.UUID, userID *uuid.UUID, description string, metadata map[string]interface{}, ipAddress, userAgent string) error {
+func (s *auditService) Log(ctx context.Context, action, entityType string, entityID *uuid.UUID, userID *uuid.UUID, description string, metadata map[string]interface{}, ipAddress, userAgent string) error {
 	var descPtr *string
 	if description != "" {
 		descPtr = &description
@@ -43,10 +44,10 @@ func (s *auditService) Log(action, entityType string, entityID *uuid.UUID, userI
 		CreatedAt:   time.Now(),
 	}
 
-	return s.auditRepo.Create(auditLog)
+	return s.auditRepo.Create(ctx, auditLog)
 }
 
-func (s *auditService) GetAll(page, limit int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error) {
+func (s *auditService) GetAll(ctx context.Context, page, limit int, userID *uuid.UUID, action *string) ([]*models.AuditLog, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -58,5 +59,5 @@ func (s *auditService) GetAll(page, limit int, userID *uuid.UUID, action *string
 	}
 
 	offset := (page - 1) * limit
-	return s.auditRepo.GetAll(limit, offset, userID, action)
+	return s.auditRepo.GetAll(ctx, limit, offset, userID, action)
 }

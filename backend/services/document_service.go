@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"mime/multipart"
 	"path/filepath"
@@ -14,25 +15,25 @@ import (
 )
 
 type DocumentService interface {
-	UploadDocument(userID uuid.UUID, file *multipart.FileHeader, documentType string) (*models.Document, error)
-	GetByUserID(userID uuid.UUID, page, limit int) ([]*models.Document, error)
-	GetByID(id uuid.UUID) (*models.Document, error)
-	DeleteDocument(id uuid.UUID, userID uuid.UUID) error
+	UploadDocument(ctx context.Context, userID uuid.UUID, file *multipart.FileHeader, documentType string) (*models.Document, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, page, limit int) ([]*models.Document, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Document, error)
+	DeleteDocument(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 }
 
 type documentService struct {
-	documentRepo repositories.DocumentRepository
+	documentRepo   repositories.DocumentRepository
 	storageService StorageService
 }
 
 func NewDocumentService(documentRepo repositories.DocumentRepository, storageService StorageService) DocumentService {
 	return &documentService{
-		documentRepo:  documentRepo,
+		documentRepo:   documentRepo,
 		storageService: storageService,
 	}
 }
 
-func (s *documentService) UploadDocument(userID uuid.UUID, file *multipart.FileHeader, documentType string) (*models.Document, error) {
+func (s *documentService) UploadDocument(ctx context.Context, userID uuid.UUID, file *multipart.FileHeader, documentType string) (*models.Document, error) {
 	// Validate file size
 	if file.Size > config.AppConfig.Storage.MaxFileSize {
 		return nil, errors.New("file size exceeds maximum allowed size")
@@ -79,7 +80,7 @@ func (s *documentService) UploadDocument(userID uuid.UUID, file *multipart.FileH
 		UpdatedAt:    time.Now(),
 	}
 
-	if err := s.documentRepo.Create(document); err != nil {
+	if err := s.documentRepo.Create(ctx, document); err != nil {
 		// Clean up file if database insert fails
 		s.storageService.DeleteFile(filePath)
 		return nil, errors.New("failed to create document record")
@@ -88,7 +89,7 @@ func (s *documentService) UploadDocument(userID uuid.UUID, file *multipart.FileH
 	return document, nil
 }
 
-func (s *documentService) GetByUserID(userID uuid.UUID, page, limit int) ([]*models.Document, error) {
+func (s *documentService) GetByUserID(ctx context.Context, userID uuid.UUID, page, limit int) ([]*models.Document, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -100,15 +101,15 @@ func (s *documentService) GetByUserID(userID uuid.UUID, page, limit int) ([]*mod
 	}
 
 	offset := (page - 1) * limit
-	return s.documentRepo.GetByUserID(userID, limit, offset)
+	return s.documentRepo.GetByUserID(ctx, userID, limit, offset)
 }
 
-func (s *documentService) GetByID(id uuid.UUID) (*models.Document, error) {
-	return s.documentRepo.GetByID(id)
+func (s *documentService) GetByID(ctx context.Context, id uuid.UUID) (*models.Document, error) {
+	return s.documentRepo.GetByID(ctx, id)
 }
 
-func (s *documentService) DeleteDocument(id uuid.UUID, userID uuid.UUID) error {
-	document, err := s.documentRepo.GetByID(id)
+func (s *documentService) DeleteDocument(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	document, err := s.documentRepo.GetByID(ctx, id)
 	if err != nil {
 		return errors.New("document not found")
 	}
@@ -124,5 +125,5 @@ func (s *documentService) DeleteDocument(id uuid.UUID, userID uuid.UUID) error {
 	}
 
 	// Delete database record
-	return s.documentRepo.Delete(id)
+	return s.documentRepo.Delete(ctx, id)
 }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -12,9 +13,9 @@ import (
 )
 
 type AuthService interface {
-	Register(req *models.RegisterRequest) (*models.LoginResponse, error)
-	Login(req *models.LoginRequest) (*models.LoginResponse, error)
-	GetUserByID(id uuid.UUID) (*models.User, error)
+	Register(ctx context.Context, req *models.RegisterRequest) (*models.LoginResponse, error)
+	Login(ctx context.Context, req *models.LoginRequest) (*models.LoginResponse, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 }
 
 type authService struct {
@@ -27,9 +28,9 @@ func NewAuthService(userRepo repositories.UserRepository) AuthService {
 	}
 }
 
-func (s *authService) Register(req *models.RegisterRequest) (*models.LoginResponse, error) {
+func (s *authService) Register(ctx context.Context, req *models.RegisterRequest) (*models.LoginResponse, error) {
 	// Check if user already exists
-	existingUser, _ := s.userRepo.GetByEmail(req.Email)
+	existingUser, _ := s.userRepo.GetByEmail(ctx, req.Email)
 	if existingUser != nil {
 		return nil, errors.New("user with this email already exists")
 	}
@@ -48,12 +49,12 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 
 	// Create user
 	user := &models.User{
-		ID:          uuid.New(),
-		Name:        req.Name,
-		Email:       req.Email,
+		ID:           uuid.New(),
+		Name:         req.Name,
+		Email:        req.Email,
 		PasswordHash: passwordHash,
-		Role:        role,
-		IsActive:    true,
+		Role:         role,
+		IsActive:     true,
 	}
 
 	if req.Department != "" {
@@ -63,7 +64,7 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 		user.Designation = &req.Designation
 	}
 
-	if err := s.userRepo.Create(user); err != nil {
+	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, errors.New("failed to create user")
 	}
 
@@ -87,9 +88,9 @@ func (s *authService) Register(req *models.RegisterRequest) (*models.LoginRespon
 	}, nil
 }
 
-func (s *authService) Login(req *models.LoginRequest) (*models.LoginResponse, error) {
+func (s *authService) Login(ctx context.Context, req *models.LoginRequest) (*models.LoginResponse, error) {
 	// Get user by email
-	user, err := s.userRepo.GetByEmail(req.Email)
+	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, errors.New("invalid email or password")
 	}
@@ -124,6 +125,6 @@ func (s *authService) Login(req *models.LoginRequest) (*models.LoginResponse, er
 	}, nil
 }
 
-func (s *authService) GetUserByID(id uuid.UUID) (*models.User, error) {
-	return s.userRepo.GetByID(id)
+func (s *authService) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	return s.userRepo.GetByID(ctx, id)
 }

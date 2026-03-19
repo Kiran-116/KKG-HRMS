@@ -38,7 +38,7 @@ func (c *AttendanceController) CheckIn(ctx *gin.Context) {
 		}
 	}
 
-	attendance, err := c.attendanceService.CheckIn(id, date)
+	attendance, err := c.attendanceService.CheckIn(ctx.Request.Context(), id, date)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Check-in failed",
@@ -66,7 +66,7 @@ func (c *AttendanceController) CheckOut(ctx *gin.Context) {
 		}
 	}
 
-	attendance, err := c.attendanceService.CheckOut(id, date)
+	attendance, err := c.attendanceService.CheckOut(ctx.Request.Context(), id, date)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Check-out failed",
@@ -86,7 +86,7 @@ func (c *AttendanceController) GetMyAttendance(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 
-	attendances, err := c.attendanceService.GetByUserID(id, page, limit)
+	attendances, err := c.attendanceService.GetByUserID(ctx.Request.Context(), id, page, limit)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch attendance",
@@ -117,7 +117,7 @@ func (c *AttendanceController) GetAllAttendance(ctx *gin.Context) {
 		}
 	}
 
-	attendances, err := c.attendanceService.GetAll(page, limit, userID, date)
+	attendances, err := c.attendanceService.GetAll(ctx.Request.Context(), page, limit, userID, date)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch attendance",
