@@ -80,8 +80,22 @@ const AdminPayrollPage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900">Payroll Management</h1>
         <button
           onClick={() => {
+            // Open form and prefill from currently selected employee if any
             setShowCreateForm(true);
-            setSelectedEmployee(null);
+            if (selectedEmployee) {
+              setFormData((prev) => ({
+                ...prev,
+                user_id: selectedEmployee.id,
+                base_salary: selectedEmployee.salary ?? 0,
+              }));
+            } else {
+              // Ensure user must choose someone when no selection
+              setFormData((prev) => ({
+                ...prev,
+                user_id: '',
+                base_salary: 0,
+              }));
+            }
           }}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
@@ -100,7 +114,15 @@ const AdminPayrollPage: React.FC = () => {
               <select
                 required
                 value={formData.user_id}
-                onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
+                onChange={(e) => {
+                  const newUserId = e.target.value;
+                  const chosen = employees.find((emp) => emp.id === newUserId);
+                  setFormData({
+                    ...formData,
+                    user_id: newUserId,
+                    base_salary: chosen?.salary ?? 0,
+                  });
+                }}
                 className="w-full px-4 py-2 border rounded-md"
               >
                 <option value="">Select Employee</option>
@@ -123,6 +145,7 @@ const AdminPayrollPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, base_salary: parseFloat(e.target.value) })}
                   className="w-full px-4 py-2 border rounded-md"
                 />
+                <p className="mt-1 text-xs text-gray-500">Defaults to employee’s current salary.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
