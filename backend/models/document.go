@@ -21,3 +21,9 @@ type Document struct {
 type UploadDocumentRequest struct {
 	DocumentType string `form:"document_type" binding:"required"`
 }
+
+type DocumentWithUser struct {
+	Document
+	UserName  string `json:"user_name"`
+	UserEmail string `json:"user_email"`
+}

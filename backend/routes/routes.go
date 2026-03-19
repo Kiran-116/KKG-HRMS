@@ -99,8 +99,10 @@ func SetupRoutes(router *gin.Engine) {
 		documents := api.Group("/documents")
 		{
 			documents.POST("", middleware.AuthMiddleware(), documentController.UploadDocument)
+			documents.GET("", middleware.AuthMiddleware(), middleware.RequireAdmin(), documentController.GetAllDocuments)
 			documents.GET("/me", middleware.AuthMiddleware(), documentController.GetMyDocuments)
-			documents.GET("/:userId", middleware.AuthMiddleware(), middleware.RequireAdmin(), documentController.GetDocumentsByUserID)
+			documents.GET("/user/:userId", middleware.AuthMiddleware(), middleware.RequireAdmin(), documentController.GetDocumentsByUserID)
+			documents.GET("/:id/download", middleware.AuthMiddleware(), documentController.DownloadDocument)
 			documents.DELETE("/:id", middleware.AuthMiddleware(), documentController.DeleteDocument)
 		}
 		// Notification routes (notificationService already initialized above)

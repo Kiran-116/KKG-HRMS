@@ -6,7 +6,12 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const { isAdmin } = useAuth();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/documents/admin' || path === '/documents') {
+      return location.pathname.startsWith('/documents');
+    }
+    return location.pathname === path;
+  };
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
@@ -26,7 +31,7 @@ const Sidebar: React.FC = () => {
           { path: '/leaves/me', label: 'My Leaves', icon: '📅' },
           { path: '/salary/me', label: 'My Salary', icon: '💰' },
         ]),
-    { path: '/documents', label: 'Documents', icon: '📄' },
+    { path: isAdmin ? '/documents/admin' : '/documents', label: 'Documents', icon: '📄' },
     { path: '/notifications', label: 'Notifications', icon: '🔔' },
     { path: '/ai-assistant', label: 'AI Assistant', icon: '🤖' },
   ];

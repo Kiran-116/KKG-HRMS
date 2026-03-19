@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"io"
 	"mime/multipart"
 	"path/filepath"
 	"time"
@@ -18,6 +19,8 @@ type DocumentService interface {
 	UploadDocument(ctx context.Context, userID uuid.UUID, file *multipart.FileHeader, documentType string) (*models.Document, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, page, limit int) ([]*models.Document, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Document, error)
+	GetFile(ctx context.Context, filePath string) (io.ReadCloser, error)
+	GetAll(ctx context.Context, page, limit int) ([]*models.DocumentWithUser, int, error)
 	DeleteDocument(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 }
 
@@ -106,6 +109,35 @@ func (s *documentService) GetByUserID(ctx context.Context, userID uuid.UUID, pag
 
 func (s *documentService) GetByID(ctx context.Context, id uuid.UUID) (*models.Document, error) {
 	return s.documentRepo.GetByID(ctx, id)
+}
+
+func (s *documentService) GetFile(ctx context.Context, filePath string) (io.ReadCloser, error) {
+	return s.storageService.GetFile(filePath)
+}
+
+func (s *documentService) GetAll(ctx context.Context, page, limit int) ([]*models.DocumentWithUser, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+	documents, err := s.documentRepo.GetAll(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := s.documentRepo.Count(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return documents, total, nil
 }
 
 func (s *documentService) DeleteDocument(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {

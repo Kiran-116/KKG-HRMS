@@ -32,6 +32,7 @@ import AdminPayroll from './pages/payroll/AdminPayroll';
 // Documents
 import DocumentList from './pages/documents/DocumentList';
 import DocumentUpload from './pages/documents/DocumentUpload';
+import AdminDocumentList from './pages/documents/AdminDocumentList';
 
 // Notifications
 import NotificationList from './pages/notifications/NotificationList';
@@ -174,6 +175,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DocumentList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="documents/admin"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminDocumentList />
                 </ProtectedRoute>
               }
             />

@@ -15,6 +15,8 @@ type DocumentRepository interface {
 	Create(ctx context.Context, document *models.Document) error
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Document, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Document, error)
+	GetAll(ctx context.Context, limit, offset int) ([]*models.DocumentWithUser, error)
+	Count(ctx context.Context) (int, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -112,6 +114,54 @@ func (r *documentRepository) GetByUserID(ctx context.Context, userID uuid.UUID, 
 	}
 
 	return documents, rows.Err()
+}
+
+func (r *documentRepository) GetAll(ctx context.Context, limit, offset int) ([]*models.DocumentWithUser, error) {
+	query := `
+		SELECT d.id, d.user_id, d.file_url, d.file_name, d.file_size, d.document_type, d.uploaded_at, d.created_at, d.updated_at,
+		       u.name, u.email
+		FROM documents d
+		LEFT JOIN users u ON d.user_id = u.id
+		ORDER BY d.uploaded_at DESC
+		LIMIT $1 OFFSET $2
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var documents []*models.DocumentWithUser
+	for rows.Next() {
+		doc := &models.DocumentWithUser{}
+		err := rows.Scan(
+			&doc.ID,
+			&doc.UserID,
+			&doc.FileURL,
+			&doc.FileName,
+			&doc.FileSize,
+			&doc.DocumentType,
+			&doc.UploadedAt,
+			&doc.CreatedAt,
+			&doc.UpdatedAt,
+			&doc.UserName,
+			&doc.UserEmail,
+		)
+		if err != nil {
+			return nil, err
+		}
+		documents = append(documents, doc)
+	}
+
+	return documents, rows.Err()
+}
+
+func (r *documentRepository) Count(ctx context.Context) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM documents`
+	err := r.db.QueryRowContext(ctx, query).Scan(&count)
+	return count, err
 }
 
 func (r *documentRepository) Delete(ctx context.Context, id uuid.UUID) error {

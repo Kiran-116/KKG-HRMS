@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { documentService, Document } from '../../services/documentService';
+import { documentService, DocumentWithUser } from '../../services/documentService';
 import ConfirmModal from '../../components/ConfirmModal';
 import DocumentViewModal from '../../components/DocumentViewModal';
 
-const DocumentListPage: React.FC = () => {
-  const [documents, setDocuments] = useState<Document[]>([]);
+const AdminDocumentListPage: React.FC = () => {
+  const [documents, setDocuments] = useState<DocumentWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 10;
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     documentId: string | null;
@@ -32,10 +33,13 @@ const DocumentListPage: React.FC = () => {
 
   const loadDocuments = async () => {
     try {
-      const data = await documentService.getMyDocuments(page, 10);
-      setDocuments(data.documents);
+      setLoading(true);
+      const data = await documentService.getAllDocuments(page, limit);
+      setDocuments(data.documents as DocumentWithUser[]);
+      setTotal(data.total);
     } catch (error) {
       console.error('Failed to load documents:', error);
+      toast.error('Failed to load documents');
     } finally {
       setLoading(false);
     }
@@ -95,13 +99,7 @@ const DocumentListPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">My Documents</h1>
-        <Link
-          to="/documents/upload"
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-        >
-          + Upload Document
-        </Link>
+        <h1 className="text-3xl font-bold text-gray-900">All Documents</h1>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -109,6 +107,8 @@ const DocumentListPage: React.FC = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">File Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uploaded</th>
@@ -119,6 +119,8 @@ const DocumentListPage: React.FC = () => {
             {documents?.map((doc) => (
               <tr key={doc.id}>
                 <td className="px-6 py-4 text-sm text-gray-900">{doc.file_name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.user_name || '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.user_email || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.document_type}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatFileSize(doc.file_size)}
@@ -152,6 +154,26 @@ const DocumentListPage: React.FC = () => {
         <div className="text-center py-12 text-gray-500">No documents found</div>
       )}
 
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-gray-600">Showing {documents.length} of {total} documents</p>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 border rounded-md disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={documents.length < limit}
+            className="px-4 py-2 border rounded-md disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title="Delete Document"
@@ -175,4 +197,4 @@ const DocumentListPage: React.FC = () => {
   );
 };
 
-export default DocumentListPage;
+export default AdminDocumentListPage;
