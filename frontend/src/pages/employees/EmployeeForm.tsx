@@ -19,6 +19,37 @@ const EmployeeFormPage: React.FC = () => {
     salary: 0,
   });
 
+  useEffect(() => {
+    const loadEmployee = async () => {
+      if (!id) return;
+      setLoading(true);
+      try {
+        const emp = await employeeService.getById(id);
+        // Convert possible ISO date to yyyy-MM-dd for input[type=date]
+        const joiningDate =
+          emp.joining_date ? new Date(emp.joining_date).toISOString().slice(0, 10) : '';
+
+        setFormData({
+          name: emp.name || '',
+          email: emp.email || '',
+          password: '', // not editable here
+          confirmPassword: '',
+          role: (emp.role as 'admin' | 'employee') || 'employee',
+          department: emp.department || '',
+          designation: emp.designation || '',
+          joining_date: joiningDate,
+          salary: emp.salary ?? 0,
+        });
+      } catch (error) {
+        // silent; page still shows empty form if fetch fails
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEmployee();
+  }, [id]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
