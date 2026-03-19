@@ -92,7 +92,13 @@ const AdminDashboardPage: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Monthly Payroll Trend</h2>
-          <PayrollChart data={dashboard.payroll_trend || []} />
+          {dashboard.payroll_trend && dashboard.payroll_trend.length > 0 ? (
+            <PayrollChart data={dashboard.payroll_trend} />
+          ) : (
+            <div className="flex items-center justify-center h-64 text-gray-500">
+              No payroll data available
+            </div>
+          )}
         </div>
       </div>
 

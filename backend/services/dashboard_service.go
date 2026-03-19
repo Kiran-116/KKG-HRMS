@@ -132,32 +132,43 @@ func (s *dashboardService) GetAdminDashboard(ctx context.Context, rangeParam str
 	result["attendance_trend"] = attendanceTrend
 
 	// Monthly payroll (last 6 months)
-	startMonth := currentMonth - 5
-	startYear := currentYear
-	if startMonth <= 0 {
-		startMonth += 12
-		startYear--
-	}
+	// Generate last 6 months and join with salary data
 	payrollTrendRows, _ := s.db.QueryContext(ctx, `
-		SELECT month, year, COALESCE(SUM(net_salary), 0) as total
-		FROM salaries
-		WHERE (year = $1 AND month >= $2) OR (year = $3 AND month <= $4)
-		GROUP BY month, year
-		ORDER BY year ASC, month ASC
-		LIMIT 6
-	`, currentYear, startMonth, startYear, currentMonth)
+		WITH months AS (
+			SELECT 
+				EXTRACT(MONTH FROM generate_series(
+					CURRENT_DATE - INTERVAL '5 months',
+					CURRENT_DATE,
+					'1 month'
+				))::int AS month,
+				EXTRACT(YEAR FROM generate_series(
+					CURRENT_DATE - INTERVAL '5 months',
+					CURRENT_DATE,
+					'1 month'
+				))::int AS year
+		)
+		SELECT 
+			m.month,
+			m.year,
+			COALESCE(SUM(s.net_salary), 0) as total
+		FROM months m
+		LEFT JOIN salaries s ON s.month = m.month AND s.year = m.year
+		GROUP BY m.month, m.year
+		ORDER BY m.year ASC, m.month ASC
+	`)
 	defer payrollTrendRows.Close()
 
 	var payrollTrend []map[string]interface{}
 	for payrollTrendRows.Next() {
 		var month, year int
 		var total float64
-		payrollTrendRows.Scan(&month, &year, &total)
-		payrollTrend = append(payrollTrend, map[string]interface{}{
-			"month": month,
-			"year":  year,
-			"total": total,
-		})
+		if err := payrollTrendRows.Scan(&month, &year, &total); err == nil {
+			payrollTrend = append(payrollTrend, map[string]interface{}{
+				"month": month,
+				"year":  year,
+				"total": total,
+			})
+		}
 	}
 	result["payroll_trend"] = payrollTrend
 

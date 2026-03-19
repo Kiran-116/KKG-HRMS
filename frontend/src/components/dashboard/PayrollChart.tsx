@@ -18,22 +18,30 @@ const PayrollChart: React.FC<PayrollChartProps> = ({ data }) => {
     );
   }
 
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
   const chartData = data.map(item => ({
-    label: `${item.month}/${item.year}`,
+    label: `${monthNames[item.month - 1]} ${item.year}`,
     total: item.total,
-  })).reverse(); // Reverse to show oldest to newest
+  }));
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={chartData}>
+      <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="label" />
+        <XAxis 
+          dataKey="label" 
+          angle={-45}
+          textAnchor="end"
+          height={80}
+        />
         <YAxis />
         <Tooltip 
-          formatter={(value: number) => `$${value.toLocaleString()}`}
+          formatter={(value: number) => [`$${value.toLocaleString()}`, 'Total Payroll']}
+          labelStyle={{ color: '#1f2937' }}
         />
         <Legend />
-        <Bar dataKey="total" fill="#6366f1" name="Total Payroll" />
+        <Bar dataKey="total" fill="#6366f1" name="Total Payroll" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
