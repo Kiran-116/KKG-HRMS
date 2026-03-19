@@ -6,7 +6,8 @@ import { WebSocketProvider } from './contexts/WebSocketContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import Register from './pages/Register';
+import MagicLogin from './pages/MagicLogin';
+import SetPassword from './pages/SetPassword';
 
 // Dashboard
 import Dashboard from './pages/Dashboard';
@@ -53,7 +54,15 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/magic-login" element={<MagicLogin />} />
+            <Route
+              path="/set-password"
+              element={
+                <ProtectedRoute>
+                  <SetPassword />
+                </ProtectedRoute>
+              }
+            />
             
             <Route
               path="/"

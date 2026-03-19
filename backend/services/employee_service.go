@@ -2,12 +2,15 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"time"
 
+	"hrms/config"
 	"hrms/models"
 	"hrms/repositories"
-	"hrms/utils"
 
 	"github.com/google/uuid"
 )
@@ -24,12 +27,14 @@ type EmployeeService interface {
 type employeeService struct {
 	userRepo     repositories.UserRepository
 	employeeRepo repositories.EmployeeRepository
+	emailService EmailService
 }
 
-func NewEmployeeService(userRepo repositories.UserRepository, employeeRepo repositories.EmployeeRepository) EmployeeService {
+func NewEmployeeService(userRepo repositories.UserRepository, employeeRepo repositories.EmployeeRepository, emailService EmailService) EmployeeService {
 	return &employeeService{
 		userRepo:     userRepo,
 		employeeRepo: employeeRepo,
+		emailService: emailService,
 	}
 }
 
@@ -40,11 +45,14 @@ func (s *employeeService) CreateEmployee(ctx context.Context, req *models.Create
 		return nil, errors.New("employee with this email already exists")
 	}
 
-	// Hash password
-	passwordHash, err := utils.HashPassword(req.Password)
+	// Generate magic token
+	magicToken, err := generateMagicToken()
 	if err != nil {
-		return nil, errors.New("failed to hash password")
+		return nil, errors.New("failed to generate magic token")
 	}
+
+	// Set expiry to 24 hours from now
+	expiresAt := time.Now().Add(24 * time.Hour)
 
 	// Set default role
 	role := req.Role
@@ -61,14 +69,17 @@ func (s *employeeService) CreateEmployee(ctx context.Context, req *models.Create
 		}
 	}
 
-	// Create user
+	// Create user with magic token (no password hash initially)
 	user := &models.User{
-		ID:           uuid.New(),
-		Name:         req.Name,
-		Email:        req.Email,
-		PasswordHash: passwordHash,
-		Role:         role,
-		IsActive:     true,
+		ID:                uuid.New(),
+		Name:              req.Name,
+		Email:             req.Email,
+		PasswordHash:      "", // Empty password hash - will be set when user sets password
+		Role:              role,
+		IsActive:          true,
+		MagicToken:        &magicToken,
+		MagicExpiresAt:    &expiresAt,
+		MustChangePassword: true,
 	}
 
 	if req.Department != "" {
@@ -88,7 +99,28 @@ func (s *employeeService) CreateEmployee(ctx context.Context, req *models.Create
 		return nil, errors.New("failed to create employee")
 	}
 
+	// Generate magic link
+	frontendURL := config.AppConfig.Server.FrontendURL
+	magicLink := fmt.Sprintf("%s/magic-login?token=%s", frontendURL, magicToken)
+
+	// Send magic link email (async)
+	go func() {
+		if err := s.emailService.SendMagicLinkEmail(user.Email, user.Name, magicLink); err != nil {
+			// Log error but don't fail employee creation
+			fmt.Printf("Failed to send magic link email to %s: %v\n", user.Email, err)
+		}
+	}()
+
 	return s.employeeRepo.GetByID(ctx, user.ID)
+}
+
+// generateMagicToken generates a secure random token for magic link
+func generateMagicToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
 func (s *employeeService) UpdateEmployee(ctx context.Context, id uuid.UUID, req *models.UpdateEmployeeRequest) (*models.Employee, error) {

@@ -22,6 +22,7 @@ type Config struct {
 type ServerConfig struct {
 	Port         string
 	Host         string
+	FrontendURL  string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	Environment  string
@@ -92,6 +93,7 @@ func Load() error {
 		Server: ServerConfig{
 			Port:         getEnv("SERVER_PORT", "8080"),
 			Host:         getEnv("SERVER_HOST", "0.0.0.0"),
+			FrontendURL:  getEnv("FRONTEND_URL", "http://localhost:3000"),
 			ReadTimeout:  getDurationEnv("SERVER_READ_TIMEOUT", 15*time.Second),
 			WriteTimeout: getDurationEnv("SERVER_WRITE_TIMEOUT", 15*time.Second),
 			Environment:  getEnv("ENVIRONMENT", "development"),
@@ -130,12 +132,12 @@ func Load() error {
 			Model:  getEnv("OPENAI_MODEL", "gpt-3.5-turbo"),
 		},
 		SMTP: SMTPConfig{
-			Host:     getEnv("SMTP_HOST", ""),
+			Host:     getEnv("SMTP_HOST", "smtp.gmail.com"),
 			Port:     getIntEnv("SMTP_PORT", 587),
-			Username: getEnv("SMTP_USERNAME", ""),
-			Password: getEnv("SMTP_PASSWORD", ""),
+			Username: getEnv("SMTP_USERNAME", "kirankumar2003g@gmail.com"),
+			Password: getEnv("SMTP_PASSWORD", "wrkp kvtt nxye gttu"),
 			From:     getEnv("SMTP_FROM", "noreply@hrms.com"),
-			Enabled:  getBoolEnv("SMTP_ENABLED", false),
+			Enabled:  getBoolEnv("SMTP_ENABLED", true),
 		},
 		Storage: StorageConfig{
 			Type:         getEnv("STORAGE_TYPE", "local"),

@@ -80,6 +80,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refresh_token);
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
     setUser(response.user);
+    
+    // If must_change_password is true, redirect to set-password
+    if (response.must_change_password) {
+      window.location.href = '/set-password';
+    }
   };
 
   const register = async (name: string, email: string, password: string, role?: string) => {

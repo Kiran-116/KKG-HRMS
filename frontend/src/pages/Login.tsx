@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login: React.FC = () => {
@@ -33,10 +33,7 @@ const Login: React.FC = () => {
             Sign in to HRMS
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-              create a new account
-            </Link>
+            Contact your administrator to get access
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

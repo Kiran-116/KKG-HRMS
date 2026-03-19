@@ -7,11 +7,9 @@ const EmployeeFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<CreateEmployeeRequest & { confirmPassword?: string }>({
+  const [formData, setFormData] = useState<CreateEmployeeRequest>({
     name: '',
     email: '',
-    password: '',
-    confirmPassword: '',
     role: 'employee',
     department: '',
     designation: '',
@@ -32,8 +30,6 @@ const EmployeeFormPage: React.FC = () => {
         setFormData({
           name: emp.name || '',
           email: emp.email || '',
-          password: '', // not editable here
-          confirmPassword: '',
           role: (emp.role as 'admin' | 'employee') || 'employee',
           department: emp.department || '',
           designation: emp.designation || '',
@@ -60,10 +56,6 @@ const EmployeeFormPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id && formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
 
     setLoading(true);
     try {
@@ -83,7 +75,6 @@ const EmployeeFormPage: React.FC = () => {
         const createData: CreateEmployeeRequest = {
           name: formData.name,
           email: formData.email,
-          password: formData.password,
           role: formData.role as 'admin' | 'employee',
           department: formData.department,
           designation: formData.designation,
@@ -91,7 +82,7 @@ const EmployeeFormPage: React.FC = () => {
           salary: formData.salary,
         };
         await employeeService.create(createData);
-        toast.success('Employee created successfully!');
+        toast.success('Employee created successfully! A magic link has been sent to their email to set their password.');
       }
       navigate('/employees');
     } catch (error: any) {
@@ -132,32 +123,6 @@ const EmployeeFormPage: React.FC = () => {
           />
         </div>
 
-        {!id && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Password *</label>
-              <input
-                type="password"
-                name="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Confirm Password *</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              />
-            </div>
-          </>
-        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Role</label>

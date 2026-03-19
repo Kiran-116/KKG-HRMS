@@ -7,18 +7,21 @@ import (
 )
 
 type User struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	Name        string    `json:"name" db:"name"`
-	Email       string    `json:"email" db:"email"`
-	PasswordHash string   `json:"-" db:"password_hash"`
-	Role        string    `json:"role" db:"role"`
-	Department  *string   `json:"department,omitempty" db:"department"`
-	Designation *string   `json:"designation,omitempty" db:"designation"`
-	JoiningDate *time.Time `json:"joining_date,omitempty" db:"joining_date"`
-	Salary      *float64  `json:"salary,omitempty" db:"salary"`
-	IsActive    bool      `json:"is_active" db:"is_active"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	ID                 uuid.UUID  `json:"id" db:"id"`
+	Name               string     `json:"name" db:"name"`
+	Email              string     `json:"email" db:"email"`
+	PasswordHash       string     `json:"-" db:"password_hash"`
+	Role               string     `json:"role" db:"role"`
+	Department         *string    `json:"department,omitempty" db:"department"`
+	Designation        *string    `json:"designation,omitempty" db:"designation"`
+	JoiningDate        *time.Time `json:"joining_date,omitempty" db:"joining_date"`
+	Salary             *float64   `json:"salary,omitempty" db:"salary"`
+	IsActive           bool       `json:"is_active" db:"is_active"`
+	MagicToken         *string    `json:"-" db:"magic_token"`
+	MagicExpiresAt     *time.Time `json:"-" db:"magic_expires_at"`
+	MustChangePassword bool       `json:"must_change_password" db:"must_change_password"`
+	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 type RegisterRequest struct {
@@ -36,11 +39,21 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	User         *User  `json:"user"`
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int64  `json:"expires_in"`
+	User               *User  `json:"user"`
+	AccessToken        string `json:"access_token"`
+	RefreshToken       string `json:"refresh_token"`
+	TokenType          string `json:"token_type"`
+	ExpiresIn          int64  `json:"expires_in"`
+	MustChangePassword bool   `json:"must_change_password,omitempty"`
+}
+
+type MagicLoginRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+type SetPasswordRequest struct {
+	NewPassword     string `json:"new_password" binding:"required,min=10"`
+	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }
 
 const (

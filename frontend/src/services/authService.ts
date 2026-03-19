@@ -34,6 +34,16 @@ export interface LoginResponse {
   refresh_token: string;
   token_type: string;
   expires_in: number;
+  must_change_password?: boolean;
+}
+
+export interface MagicLoginRequest {
+  token: string;
+}
+
+export interface SetPasswordRequest {
+  new_password: string;
+  confirm_password: string;
 }
 
 export const authService = {
@@ -50,6 +60,15 @@ export const authService = {
   getMe: async (): Promise<User> => {
     const response = await api.get<User>('/auth/me');
     return response.data;
+  },
+
+  magicLogin: async (token: string): Promise<LoginResponse> => {
+    const response = await api.post<LoginResponse>('/auth/magic-login', { token });
+    return response.data;
+  },
+
+  setPassword: async (data: SetPasswordRequest): Promise<void> => {
+    await api.post('/auth/set-password', data);
   },
 
   logout: (): void => {

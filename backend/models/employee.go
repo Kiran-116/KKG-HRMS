@@ -23,7 +23,6 @@ type Employee struct {
 type CreateEmployeeRequest struct {
 	Name        string  `json:"name" binding:"required,min=2,max=255"`
 	Email       string  `json:"email" binding:"required,email"`
-	Password    string  `json:"password" binding:"required,min=8"`
 	Role        string  `json:"role" binding:"omitempty,oneof=admin employee"`
 	Department  string  `json:"department" binding:"omitempty,max=255"`
 	Designation string  `json:"designation" binding:"omitempty,max=255"`

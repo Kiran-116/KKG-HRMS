@@ -39,13 +39,17 @@ func SetupRoutes(router *gin.Engine) {
 		// Auth routes
 		auth := api.Group("/auth")
 		{
-			auth.POST("/register", middleware.RateLimitAuth(), authController.Register)
+			// Register is now admin-only (or can be removed entirely)
+			auth.POST("/register", middleware.RateLimitAuth(), middleware.AuthMiddleware(), middleware.RequireAdmin(), authController.Register)
 			auth.POST("/login", middleware.RateLimitAuth(), authController.Login)
+			auth.POST("/magic-login", middleware.RateLimitAuth(), authController.MagicLogin)
+			auth.POST("/set-password", middleware.AuthMiddleware(), authController.SetPassword)
 			auth.GET("/me", middleware.AuthMiddleware(), authController.GetMe)
 		}
 
 		// Employee routes
-		employeeService := services.NewEmployeeService(userRepo, repositories.NewEmployeeRepository())
+		emailService := services.NewEmailService()
+		employeeService := services.NewEmployeeService(userRepo, repositories.NewEmployeeRepository(), emailService)
 		employeeController := controllers.NewEmployeeController(employeeService)
 		employees := api.Group("/employees")
 		{
@@ -70,7 +74,6 @@ func SetupRoutes(router *gin.Engine) {
 		leaveRepo := repositories.NewLeaveRepository()
 		// Notification service is needed by leave service for real-time updates
 		notificationRepo := repositories.NewNotificationRepository()
-		emailService := services.NewEmailService()
 		notificationService := services.NewNotificationService(notificationRepo, emailService, wsHub)
 		leaveService := services.NewLeaveService(leaveRepo, notificationService, wsHub, userRepo)
 		leaveController := controllers.NewLeaveController(leaveService)

@@ -15,6 +15,8 @@ import (
 type AuthService interface {
 	Register(ctx context.Context, req *models.RegisterRequest) (*models.LoginResponse, error)
 	Login(ctx context.Context, req *models.LoginRequest) (*models.LoginResponse, error)
+	MagicLogin(ctx context.Context, req *models.MagicLoginRequest) (*models.LoginResponse, error)
+	SetPassword(ctx context.Context, userID uuid.UUID, req *models.SetPasswordRequest) error
 	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 }
 
@@ -117,12 +119,103 @@ func (s *authService) Login(ctx context.Context, req *models.LoginRequest) (*mod
 	}
 
 	return &models.LoginResponse{
-		User:         user,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		TokenType:    "Bearer",
-		ExpiresIn:    int64(time.Minute * 15 / time.Second),
+		User:              user,
+		AccessToken:       accessToken,
+		RefreshToken:      refreshToken,
+		TokenType:         "Bearer",
+		ExpiresIn:         int64(time.Minute * 15 / time.Second),
+		MustChangePassword: user.MustChangePassword,
 	}, nil
+}
+
+func (s *authService) MagicLogin(ctx context.Context, req *models.MagicLoginRequest) (*models.LoginResponse, error) {
+	// Get user by magic token
+	user, err := s.userRepo.GetByMagicToken(ctx, req.Token)
+	if err != nil {
+		return nil, errors.New("invalid or expired magic link")
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		return nil, errors.New("user account is deactivated")
+	}
+
+	// Check if must_change_password is true
+	if !user.MustChangePassword {
+		return nil, errors.New("magic link has already been used")
+	}
+
+	// Clear magic token (one-time use)
+	emptyToken := ""
+	emptyTime := time.Time{}
+	user.MagicToken = &emptyToken
+	user.MagicExpiresAt = &emptyTime
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, errors.New("failed to update user")
+	}
+
+	// Generate tokens
+	accessToken, err := utils.GenerateAccessToken(user)
+	if err != nil {
+		return nil, errors.New("failed to generate access token")
+	}
+
+	refreshToken, err := utils.GenerateRefreshToken(user)
+	if err != nil {
+		return nil, errors.New("failed to generate refresh token")
+	}
+
+	return &models.LoginResponse{
+		User:              user,
+		AccessToken:       accessToken,
+		RefreshToken:      refreshToken,
+		TokenType:         "Bearer",
+		ExpiresIn:         int64(time.Minute * 15 / time.Second),
+		MustChangePassword: true,
+	}, nil
+}
+
+func (s *authService) SetPassword(ctx context.Context, userID uuid.UUID, req *models.SetPasswordRequest) error {
+	// Validate password match
+	if req.NewPassword != req.ConfirmPassword {
+		return errors.New("passwords do not match")
+	}
+
+	// Validate stronger password policy (min 10 chars, number + symbol)
+	if len(req.NewPassword) < 10 {
+		return errors.New("password must be at least 10 characters long")
+	}
+
+	hasNumber := false
+	hasSymbol := false
+	for _, char := range req.NewPassword {
+		if char >= '0' && char <= '9' {
+			hasNumber = true
+		}
+		if (char >= '!' && char <= '/') || (char >= ':' && char <= '@') || (char >= '[' && char <= '`') || (char >= '{' && char <= '~') {
+			hasSymbol = true
+		}
+	}
+
+	if !hasNumber {
+		return errors.New("password must contain at least one number")
+	}
+	if !hasSymbol {
+		return errors.New("password must contain at least one symbol")
+	}
+
+	// Hash new password
+	passwordHash, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return errors.New("failed to hash password")
+	}
+
+	// Update password and clear must_change_password flag
+	if err := s.userRepo.UpdatePassword(ctx, userID, passwordHash); err != nil {
+		return errors.New("failed to update password")
+	}
+
+	return nil
 }
 
 func (s *authService) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {

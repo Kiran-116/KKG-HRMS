@@ -24,7 +24,6 @@ export interface EmployeeListResponse {
 export interface CreateEmployeeRequest {
   name: string;
   email: string;
-  password: string;
   role?: 'admin' | 'employee';
   department?: string;
   designation?: string;
