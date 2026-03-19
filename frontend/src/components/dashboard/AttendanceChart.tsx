@@ -1,11 +1,11 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface AttendanceChartProps {
   data: Array<{
     date: string;
     present: number;
-    absent?: number;
+    absent: number;
   }>;
 }
 
@@ -20,34 +20,32 @@ const AttendanceChart: React.FC<AttendanceChartProps> = ({ data }) => {
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data}>
+      <BarChart
+        data={data}
+        margin={{ top: 10, right: 20, bottom: 10, left: 0 }}
+        barCategoryGap={12}
+        barGap={6}
+      >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          dataKey="date" 
-          tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        <XAxis
+          dataKey="date"
+          tickFormatter={(value) =>
+            new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
         />
-        <YAxis />
-        <Tooltip 
-          labelFormatter={(value) => new Date(value).toLocaleDateString()}
+        <YAxis allowDecimals={false} />
+        <Tooltip
+          labelFormatter={(value) => new Date(value as string).toLocaleDateString()}
+          formatter={(value: number, name: string) => [
+            value,
+            name === 'present' ? 'Present' : 'Absent',
+          ]}
         />
         <Legend />
-        <Line 
-          type="monotone" 
-          dataKey="present" 
-          stroke="#10b981" 
-          strokeWidth={2}
-          name="Present"
-        />
-        {data[0]?.absent !== undefined && (
-          <Line 
-            type="monotone" 
-            dataKey="absent" 
-            stroke="#ef4444" 
-            strokeWidth={2}
-            name="Absent"
-          />
-        )}
-      </LineChart>
+        {/* Grouped bars: Present and Absent side-by-side per day */}
+        <Bar dataKey="present" fill="#10b981" name="Present" maxBarSize={24} />
+        <Bar dataKey="absent" fill="#ef4444" name="Absent" maxBarSize={24} />
+      </BarChart>
     </ResponsiveContainer>
   );
 };

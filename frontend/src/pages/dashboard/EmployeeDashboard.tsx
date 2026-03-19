@@ -80,7 +80,12 @@ const EmployeeDashboardPage: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Attendance Trend (Last 7 Days)</h2>
-          <AttendanceChart data={dashboard.attendance_trend || []} />
+          <AttendanceChart
+            data={(dashboard.attendance_trend || []).map((d) => ({
+              ...d,
+              absent: 1 - d.present,
+            }))}
+          />
         </div>
       </div>
 

@@ -54,8 +54,10 @@ export interface EmployeeDashboard {
 }
 
 export const dashboardService = {
-  getAdminDashboard: async (): Promise<AdminDashboard> => {
-    const response = await api.get<AdminDashboard>('/dashboard/admin');
+  getAdminDashboard: async (range: 'day' | 'month' | 'year' = 'month'): Promise<AdminDashboard> => {
+    const response = await api.get<AdminDashboard>('/dashboard/admin', {
+      params: { range },
+    });
     return response.data;
   },
 

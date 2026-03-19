@@ -21,7 +21,8 @@ func NewDashboardController(dashboardService services.DashboardService) *Dashboa
 
 // GetAdminDashboard gets admin dashboard data
 func (c *DashboardController) GetAdminDashboard(ctx *gin.Context) {
-	data, err := c.dashboardService.GetAdminDashboard(ctx.Request.Context())
+	rangeParam := ctx.DefaultQuery("range", "month") // day | month | year
+	data, err := c.dashboardService.GetAdminDashboard(ctx.Request.Context(), rangeParam)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch dashboard data",

@@ -7,14 +7,15 @@ import PayrollChart from '../../components/dashboard/PayrollChart';
 const AdminDashboardPage: React.FC = () => {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<'day' | 'month' | 'year'>('month');
 
   useEffect(() => {
     loadDashboard();
-  }, []);
+  }, [range]);
 
   const loadDashboard = async () => {
     try {
-      const data = await dashboardService.getAdminDashboard();
+      const data = await dashboardService.getAdminDashboard(range);
       setDashboard(data);
     } catch (error) {
       console.error('Failed to load dashboard:', error);
@@ -67,8 +68,26 @@ const AdminDashboardPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Attendance Trend (Last 30 Days)</h2>
-          <AttendanceChart data={dashboard.attendance_trend || []} />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Attendance Trend (
+              {range === 'day' ? 'Last 7 Days' : range === 'year' ? 'Last 1 Year' : 'Last 30 Days'})
+            </h2>
+            <select
+              value={range}
+              onChange={(e) => setRange(e.target.value as 'day' | 'month' | 'year')}
+              className="px-3 py-1 border rounded-md text-sm"
+            >
+              <option value="day">Day</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+            </select>
+          </div>
+          <AttendanceChart
+            data={(dashboard.attendance_trend || []).slice(
+              -(range === 'day' ? 7 : range === 'year' ? 365 : 30)
+            )}
+          />
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">

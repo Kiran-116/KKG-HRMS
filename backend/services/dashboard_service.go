@@ -12,7 +12,7 @@ import (
 )
 
 type DashboardService interface {
-	GetAdminDashboard(ctx context.Context) (map[string]interface{}, error)
+	GetAdminDashboard(ctx context.Context, rangeParam string) (map[string]interface{}, error)
 	GetEmployeeDashboard(ctx context.Context, userID uuid.UUID) (map[string]interface{}, error)
 }
 
@@ -26,7 +26,7 @@ func NewDashboardService() DashboardService {
 	}
 }
 
-func (s *dashboardService) GetAdminDashboard(ctx context.Context) (map[string]interface{}, error) {
+func (s *dashboardService) GetAdminDashboard(ctx context.Context, rangeParam string) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
 	// Total employees
@@ -89,23 +89,40 @@ func (s *dashboardService) GetAdminDashboard(ctx context.Context) (map[string]in
 		"total": payrollTotal,
 	}
 
-	// Attendance trend (last 30 days)
+	// Determine range for attendance trend
+	days := 30
+	switch rangeParam {
+	case "day":
+		days = 7
+	case "year":
+		days = 365
+	}
+
+	// Attendance trend over selected range
+	// Use a date series to include days with no attendance rows.
 	attendanceTrendRows, _ := s.db.QueryContext(ctx, `
-		SELECT date, 
-		       COUNT(*) FILTER (WHERE status IN ('present', 'late', 'half_day')) as present,
-		       COUNT(*) FILTER (WHERE status = 'absent') as absent
-		FROM attendance
-		WHERE date >= CURRENT_DATE - INTERVAL '30 days'
-		GROUP BY date
-		ORDER BY date ASC
-	`)
+		WITH dates AS (
+			SELECT generate_series(CURRENT_DATE - ($1::int - 1) * INTERVAL '1 day', CURRENT_DATE, INTERVAL '1 day')::date AS date
+		)
+		SELECT 
+			d.date,
+			COALESCE(COUNT(DISTINCT a.user_id) FILTER (WHERE a.status IN ('present', 'late', 'half_day')), 0) AS present
+		FROM dates d
+		LEFT JOIN attendance a ON a.date = d.date
+		GROUP BY d.date
+		ORDER BY d.date ASC
+	`, days)
 	defer attendanceTrendRows.Close()
 
 	var attendanceTrend []map[string]interface{}
 	for attendanceTrendRows.Next() {
 		var date time.Time
-		var present, absent int
-		attendanceTrendRows.Scan(&date, &present, &absent)
+		var present int
+		attendanceTrendRows.Scan(&date, &present)
+		absent := 0
+		if totalEmployees > present {
+			absent = totalEmployees - present
+		}
 		attendanceTrend = append(attendanceTrend, map[string]interface{}{
 			"date":    date.Format("2006-01-02"),
 			"present": present,
