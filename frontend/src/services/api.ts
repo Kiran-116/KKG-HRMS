@@ -1,13 +1,13 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 class ApiClient {
   private client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
-      baseURL: API_URL,
+      baseURL: API_URL + "/api",
       headers: {
         'Content-Type': 'application/json',
       },
