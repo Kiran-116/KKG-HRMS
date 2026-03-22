@@ -29,6 +29,7 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
+	URL             string
 	Host            string
 	Port            string
 	User            string
@@ -99,6 +100,7 @@ func Load() error {
 			Environment:  getEnv("ENVIRONMENT", "development"),
 		},
 		Database: DatabaseConfig{
+			URL:             getEnv("DB_URL", ""),
 			Host:            getEnv("DB_HOST", "localhost"),
 			Port:            getEnv("DB_PORT", "5432"),
 			User:            getEnv("DB_USER", "postgres"),
@@ -197,6 +199,10 @@ func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
 }
 
 func (c *DatabaseConfig) DSN() string {
+	if c.URL != "" {
+		return c.URL
+	}
+
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		c.Host, c.Port, c.User, c.Password, c.DBName, c.SSLMode)
 }

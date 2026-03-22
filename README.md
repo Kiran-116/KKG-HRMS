@@ -49,11 +49,7 @@ Copy `.env.example` to `.env` and configure:
 
 ```env
 # Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=hrms
+DB_URL=postgres://postgres:postgres@localhost:5432/hrms?sslmode=disable
 
 # JWT
 JWT_ACCESS_SECRET=your-secret-key
