@@ -37,7 +37,7 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-white shadow-lg min-h-screen fixed left-0 top-16 z-10">
+    <aside className="w-64 bg-white shadow-lg fixed left-0 top-16 z-10 h-[calc(100vh-4rem)] overflow-y-auto">
       <nav className="p-4">
         <ul className="space-y-2">
           {menuItems.map((item) => (

@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { aiService } from '../../services/aiService';
+import { aiService, AIResponse } from '../../services/aiService';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  data?: Array<Record<string, any>>;
 }
 
 const HRAssistantPage: React.FC = () => {
@@ -32,8 +33,8 @@ const HRAssistantPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const answer = await aiService.query(input);
-      const assistantMessage: Message = { role: 'assistant', content: answer };
+      const resp: AIResponse = await aiService.query(input);
+      const assistantMessage: Message = { role: 'assistant', content: resp.message || (resp as any).answer || '' , data: resp.data };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error: any) {
       const errorMessage: Message = {
@@ -44,6 +45,35 @@ const HRAssistantPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderDataTable = (rows?: Array<Record<string, any>>) => {
+    if (!rows || rows.length === 0) return null;
+    const cols = Object.keys(rows[0]);
+    return (
+      <div className="mt-2 overflow-x-auto">
+        <table className="min-w-[320px] text-xs text-left border border-gray-200 rounded">
+          <thead className="bg-gray-50">
+            <tr>
+              {cols.map(c => (
+                <th key={c} className="px-2 py-1 border-b border-gray-200 font-medium text-gray-700">{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(0, 5).map((r, i) => (
+              <tr key={i} className="odd:bg-white even:bg-gray-50">
+                {cols.map(c => (
+                  <td key={c} className="px-2 py-1 border-b border-gray-100 text-gray-800">
+                    {String(r[c] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   return (
@@ -65,6 +95,7 @@ const HRAssistantPage: React.FC = () => {
                 }`}
               >
                 <p className="text-sm">{message.content}</p>
+                {message.role === 'assistant' && renderDataTable(message.data)}
               </div>
             </div>
           ))}

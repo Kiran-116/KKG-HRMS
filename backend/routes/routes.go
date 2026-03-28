@@ -7,6 +7,8 @@ import (
 	"hrms/services"
 	"hrms/websocket"
 
+	"hrms/database"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -134,7 +136,13 @@ func SetupRoutes(router *gin.Engine) {
 		}
 
 		// AI routes
-		aiService := services.NewAIService(userRepo, repositories.NewLeaveRepository(), repositories.NewAttendanceRepository(), repositories.NewSalaryRepository())
+		_ = database.DB // ensure database initialized elsewhere; injected into service
+		aiService := services.NewAIService(
+			userRepo,
+			repositories.NewLeaveRepository(),
+			repositories.NewAttendanceRepository(),
+			repositories.NewSalaryRepository(),
+		)
 		aiController := controllers.NewAIController(aiService)
 		ai := api.Group("/ai")
 		{

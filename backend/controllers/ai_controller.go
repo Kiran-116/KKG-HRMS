@@ -37,7 +37,7 @@ func (c *AIController) ProcessHRQuery(ctx *gin.Context) {
 	userID, _ := ctx.Get("user_id")
 	id := userID.(uuid.UUID)
 
-	answer, err := c.aiService.ProcessHRQuery(ctx.Request.Context(), id, req.Query)
+	resp, err := c.aiService.ProcessHRQuery(ctx.Request.Context(), id, req.Query)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to process query",
@@ -46,5 +46,9 @@ func (c *AIController) ProcessHRQuery(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"answer": answer})
+	ctx.JSON(http.StatusOK, gin.H{
+		"type":    resp.Type,
+		"message": resp.Message,
+		"data":    resp.Data,
+	})
 }
