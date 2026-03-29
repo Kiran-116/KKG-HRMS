@@ -163,3 +163,30 @@ For issues or questions, check:
 - README.md for API documentation
 - PRD.md for feature requirements
 - Logs: `docker-compose logs -f`
+
+## Observability: New Relic Logs-in-Context (Backend)
+
+Set the following environment variables (backend):
+
+```bash
+# New Relic
+NEW_RELIC_ENABLED=true
+NEW_RELIC_LICENSE_KEY=YOUR_LICENSE_KEY
+NEW_RELIC_APP_NAME=HRMS
+
+# Logging
+LOG_LEVEL=info        # debug|info|warn|error
+LOG_PRETTY=false      # true for local dev console output
+```
+
+After deploying, generate a few requests and run these NRQL queries in New Relic → Logs:
+
+```sql
+SELECT count(*) FROM Log WHERE appName='HRMS' SINCE 15 minutes ago
+```
+
+```sql
+SELECT * FROM Log WHERE trace.id IS NOT NULL AND appName='HRMS' LIMIT 100
+```
+
+You should also see correlated logs inside a transaction page under "Logs in context".
