@@ -17,6 +17,7 @@ type Config struct {
 	OpenAI   OpenAIConfig
 	SMTP     SMTPConfig
 	Storage  StorageConfig
+	Logging  LoggingConfig
 }
 
 type ServerConfig struct {
@@ -84,6 +85,11 @@ type StorageConfig struct {
 	AllowedTypes []string
 }
 
+type LoggingConfig struct {
+	Level  string
+	Pretty bool
+}
+
 var AppConfig *Config
 
 func Load() error {
@@ -130,7 +136,7 @@ func Load() error {
 		},
 		OpenAI: OpenAIConfig{
 			APIKey: getEnv("OPENAI_API_KEY", ""),
-			Model:  getEnv("OPENAI_MODEL", "gpt-3.5-turbo"),
+			Model:  getEnv("OPENAI_MODEL", "gpt-4o-mini"),
 		},
 		SMTP: SMTPConfig{
 			Host:     getEnv("SMTP_HOST", "smtp.gmail.com"),
@@ -149,6 +155,10 @@ func Load() error {
 			S3SecretKey:  getEnv("S3_SECRET_KEY", ""),
 			MaxFileSize:  getInt64Env("STORAGE_MAX_FILE_SIZE", 10*1024*1024), // 10MB
 			AllowedTypes: []string{".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"},
+		},
+		Logging: LoggingConfig{
+			Level:  getEnv("LOG_LEVEL", "info"),
+			Pretty: getBoolEnv("LOG_PRETTY", false),
 		},
 	}
 

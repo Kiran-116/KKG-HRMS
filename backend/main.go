@@ -1,13 +1,13 @@
 package main
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"hrms/config"
 	"hrms/database"
+	"hrms/logger"
 	"hrms/middleware"
 	"hrms/routes"
 
@@ -19,12 +19,15 @@ import (
 func main() {
 	// Load configuration
 	if err := config.Load(); err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		// fall back to std output since logger not initialized yet
+		println("Failed to load configuration:", err.Error())
+		return
 	}
 
 	// Initialize database
 	if err := database.Init(); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		println("Failed to initialize database:", err.Error())
+		return
 	}
 	defer database.Close()
 
@@ -35,6 +38,9 @@ func main() {
 
 	// Initialize rate limiter cleanup
 	middleware.CleanupVisitors()
+
+	// Initialize application logger first (used by New Relic agent for its own logs)
+	logger.Init(config.AppConfig.Logging.Level, config.AppConfig.Logging.Pretty, nil)
 
 	// Initialize New Relic app (optional)
 	var nrApp *newrelic.Application
@@ -49,23 +55,26 @@ func main() {
 			newrelic.ConfigDebugLogger(os.Stdout),
 		)
 		if err != nil {
-			log.Printf("New Relic initialization failed; continuing without New Relic: %v", err)
+			println("New Relic initialization failed; continuing without New Relic:", err.Error())
 		} else {
 			nrApp = app
 		}
 	}
+
+	// Reconfigure logger (no-op for now; reserved if we add context-aware linking)
+	logger.Init(config.AppConfig.Logging.Level, config.AppConfig.Logging.Pretty, nrApp)
 
 	// Setup router
 	router := setupRouter(nrApp)
 
 	// Start server
 	serverAddr := config.AppConfig.Server.Host + ":" + config.AppConfig.Server.Port
-	log.Printf("Server starting on %s", serverAddr)
+	logger.Logger.Info().Str("addr", serverAddr).Msg("server_starting")
 
 	// Graceful shutdown
 	go func() {
 		if err := router.Run(serverAddr); err != nil {
-			log.Fatalf("Failed to start server: %v", err)
+			logger.Logger.Fatal().Err(err).Msg("failed_to_start_server")
 		}
 	}()
 
@@ -74,7 +83,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	logger.Logger.Info().Msg("server_shutting_down")
 }
 
 func setupRouter(nrApp *newrelic.Application) *gin.Engine {
@@ -86,7 +95,8 @@ func setupRouter(nrApp *newrelic.Application) *gin.Engine {
 		router.Use(nrgin.Middleware(nrApp))
 	}
 	router.Use(middleware.Recovery())
-	router.Use(middleware.RequestLogger())
+	// Use the structured request logger with NR context
+	router.Use(middleware.RequestLoggingNR())
 	router.Use(middleware.SetupCORS())
 
 	// Health check endpoint
