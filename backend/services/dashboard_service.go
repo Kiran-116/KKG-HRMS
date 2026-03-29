@@ -181,14 +181,33 @@ func (s *dashboardService) GetEmployeeDashboard(ctx context.Context, userID uuid
 	// Attendance summary (current month)
 	currentMonth := int(time.Now().Month())
 	currentYear := time.Now().Year()
-	var presentDays, absentDays int
+	var presentDays, leaveDays, businessDays int
+	// Business days only, count up to TODAY; exclude approved leaves from absences
 	s.db.QueryRowContext(ctx, `
-		SELECT 
-			COUNT(*) FILTER (WHERE status IN ('present', 'late', 'half_day')) as present,
-			COUNT(*) FILTER (WHERE status = 'absent') as absent
-		FROM attendance
-		WHERE user_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3
-	`, userID, currentMonth, currentYear).Scan(&presentDays, &absentDays)
+		WITH month_days AS (
+			SELECT generate_series(
+				date_trunc('month', CURRENT_DATE)::date,
+				CURRENT_DATE,
+				interval '1 day'
+			)::date AS d
+		),
+		workdays AS (
+			SELECT d FROM month_days WHERE EXTRACT(ISODOW FROM d) < 6
+		)
+		SELECT
+			COUNT(*) AS business_days,
+			COALESCE(SUM(CASE WHEN a.status IN ('present','late','half_day') THEN 1 ELSE 0 END), 0) AS present_days,
+			COALESCE(SUM(CASE WHEN l.user_id IS NOT NULL THEN 1 ELSE 0 END), 0) AS leave_days
+		FROM workdays w
+		LEFT JOIN attendance a
+		  ON a.user_id = $1 AND a.date = w.d
+		LEFT JOIN leaves l
+		  ON l.user_id = $1 AND l.status = 'approved' AND w.d BETWEEN l.start_date AND l.end_date
+	`, userID).Scan(&businessDays, &presentDays, &leaveDays)
+	absentDays := businessDays - presentDays - leaveDays
+	if absentDays < 0 {
+		absentDays = 0
+	}
 	result["attendance_summary"] = map[string]interface{}{
 		"present_days": presentDays,
 		"absent_days":  absentDays,
@@ -243,22 +262,43 @@ func (s *dashboardService) GetEmployeeDashboard(ctx context.Context, userID uuid
 
 	// Attendance trend (last 7 days)
 	attendanceTrendRows, _ := s.db.QueryContext(ctx, `
-		SELECT date, 
-		       CASE WHEN status IN ('present', 'late', 'half_day') THEN 1 ELSE 0 END as present
-		FROM attendance
-		WHERE user_id = $1 AND date >= CURRENT_DATE - INTERVAL '7 days'
-		ORDER BY date ASC
+		WITH dates AS (
+			SELECT generate_series(CURRENT_DATE - interval '6 days', CURRENT_DATE, interval '1 day')::date AS d
+		),
+		flags AS (
+			SELECT 
+				d.d,
+				(EXTRACT(ISODOW FROM d.d) < 6)::int AS is_workday
+			FROM dates d
+		)
+		SELECT 
+			f.d AS date,
+			COALESCE(MAX(CASE WHEN a.status IN ('present','late','half_day') THEN 1 ELSE 0 END), 0) AS present,
+			CASE 
+				WHEN f.is_workday = 0 THEN 0
+				WHEN EXISTS (
+					SELECT 1 FROM leaves l 
+					WHERE l.user_id = $1 AND l.status = 'approved' AND f.d BETWEEN l.start_date AND l.end_date
+				) THEN 0
+				ELSE (1 - COALESCE(MAX(CASE WHEN a.status IN ('present','late','half_day') THEN 1 ELSE 0 END), 0))
+			END AS absent
+		FROM flags f
+		LEFT JOIN attendance a
+		  ON a.user_id = $1 AND a.date = f.d
+		GROUP BY f.d, f.is_workday
+		ORDER BY f.d ASC
 	`, userID)
 	defer attendanceTrendRows.Close()
 
 	var attendanceTrend []map[string]interface{}
 	for attendanceTrendRows.Next() {
 		var date time.Time
-		var present int
-		attendanceTrendRows.Scan(&date, &present)
+		var present, absent int
+		attendanceTrendRows.Scan(&date, &present, &absent)
 		attendanceTrend = append(attendanceTrend, map[string]interface{}{
 			"date":    date.Format("2006-01-02"),
 			"present": present,
+			"absent":  absent,
 		})
 	}
 	result["attendance_trend"] = attendanceTrend
