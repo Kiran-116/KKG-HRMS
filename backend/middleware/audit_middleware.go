@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hrms/services"
+	"hrms/logger"
 	"io"
 	"strings"
 
@@ -291,29 +292,42 @@ func AuditMiddleware(auditService services.AuditService) gin.HandlerFunc {
 		// Normalize entity type
 		normalizedEntityType := normalizeEntityType(entityType)
 
-		// Log audit event (async in production)
-		go func() {
-			var uid *uuid.UUID
-			if userID != nil {
-				if id, ok := userID.(uuid.UUID); ok {
-					uid = &id
-				}
+		// Capture values needed for persistence. (Do this in the main goroutine to avoid losing
+		// inserts due to request-context cancellation or unsafe access to `c`.)
+		var uid *uuid.UUID
+		if userID != nil {
+			if id, ok := userID.(uuid.UUID); ok {
+				uid = &id
 			}
-			auditService.Log(
-				c.Request.Context(),
-				action,
-				normalizedEntityType,
-				entityID,
-				uid,
-				description,
-				map[string]interface{}{
-					"path":   path,
-					"method": method,
-					"url":    requestPath,
-				},
-				c.ClientIP(),
-				c.Request.UserAgent(),
-			)
-		}()
+		}
+
+		ipAddress := c.ClientIP()
+		userAgent := c.Request.UserAgent()
+		metadata := map[string]interface{}{
+			"path":   path,
+			"method": method,
+			"url":    requestPath,
+		}
+
+		if err := auditService.Log(
+			c.Request.Context(),
+			action,
+			normalizedEntityType,
+			entityID,
+			uid,
+			description,
+			metadata,
+			ipAddress,
+			userAgent,
+		); err != nil {
+			logger.Logger.Error().
+				Err(err).
+				Str("action", action).
+				Str("entity_type", normalizedEntityType).
+				Str("url", requestPath).
+				Str("method", method).
+				Str("ip_address", ipAddress).
+				Msg("audit_log_insert_failed")
+		}
 	}
 }
